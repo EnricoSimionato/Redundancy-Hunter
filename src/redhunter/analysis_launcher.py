@@ -55,9 +55,6 @@ def main() -> None:
     """
     Main method to start the various types of analyses on a deep model.
     """
-    import torch
-    print("CUDAAAAAA CUDAAAAAA CUDAAAAAA CUDAAAAAA CUDAAAAAA CUDAAAAAA")
-    print(torch.cuda.is_available())
 
     if len(sys.argv) < 2:
         raise Exception("Please provide the name of the configuration file.\n"
