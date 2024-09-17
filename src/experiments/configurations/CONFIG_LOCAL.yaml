@@ -1,9 +1,11 @@
-path_to_storage: "/Users/enricosimionato/Desktop/Redundancy-Hunter/src/experiments/results"
+path_to_storage: "src/experiments/results"
 
 analysis_type: "swapped_layers_redundancy_analysis"
 
+version: "0"
+
 # model_id: "mistralai/Mistral-7B-v0.3" # model_id: "bert-base-uncased"
-model_id: "/Users/enricosimionato/Desktop/Alternative-Model-Architectures/src/experiments/models/gpt-neo-1.3B"
+model_id: "src/experiments/models/gpt-neo-1.3B"
 quantization: null
 dtype: "float32"
 

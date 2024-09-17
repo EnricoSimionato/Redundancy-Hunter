@@ -17,3 +17,4 @@ docker build -t redhunter .
 
 # Running the Docker container and mounting the experiments directory
 docker run --name redhunter -v $(pwd)/src/experiments:/Redundancy-Hunter/src/experiments redhunter
+

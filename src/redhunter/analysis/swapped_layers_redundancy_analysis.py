@@ -229,7 +229,6 @@ def perform_layer_redundancy_analysis(
     with open(config.get("file_path"), "wb") as f:
         pkl.dump(data, f)
     logger.info("All data stored.")
-    performance_dict["task"] = performance_dict[list(performance_dict.keys())[0]]
 
     destination_layer_path_source_layer_path_mapping_list, destination_layer_path_source_layer_path_mapping_list = data
     rows_labels_list, columns_labels_list, post_processed_results_list = post_process_result_dictionary(

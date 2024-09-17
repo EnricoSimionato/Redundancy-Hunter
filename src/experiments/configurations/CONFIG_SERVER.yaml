@@ -1,4 +1,4 @@
-path_to_storage: "/home/enricosimionato/Thesis/Redundancy-Hunter/src/experiments/results",
+path_to_storage: "src/experiments/results"
 
 analysis_type: "swapped_layers_redundancy_analysis"
 
