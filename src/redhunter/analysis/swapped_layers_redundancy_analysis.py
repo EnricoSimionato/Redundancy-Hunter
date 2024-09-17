@@ -191,7 +191,9 @@ def perform_layer_redundancy_analysis(
 
             logger.info(f"Starting the evaluation of the model on the device {model_wrapper.get_model().device}.")
             # Evaluating the model
+            print("just before evaluate_model_on_benchmark")
             results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id, benchmark_evaluation_args, device)
+            print("just after evaluate_model_on_benchmark")
             logger.info(f"Results: {results}")
             gc.collect()
 
