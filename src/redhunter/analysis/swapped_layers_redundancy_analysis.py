@@ -111,6 +111,7 @@ def perform_layer_redundancy_analysis(
 ) -> None:
     logger = logging.getLogger(__name__)
     logger.info(f"Running perform_layer_redundancy_analysis in redundancy_hunter.py.")
+    gc.collect()
 
     fig_size = config.get("figure_size") if config.contains("figure_size") else (20, 20)
     benchmark_ids = config.get("benchmark_ids")
@@ -121,7 +122,7 @@ def perform_layer_redundancy_analysis(
         start_from_swap = 0
     """
     # Getting the parameters from the configuration
-    device = get_available_device(config.get("device") if config.contains("device") else None, just_string=True)
+    device = get_available_device(config.get("device") if config.contains("device") else "cpu", just_string=True)
     targets_lists = config.get("targets")
     num_layers = config.get("num_layers")
     evaluation_args = (config.get("evaluation_args")
@@ -136,6 +137,7 @@ def perform_layer_redundancy_analysis(
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
     tokenizer = load_tokenizer_for_causal_lm(config)
     logger.info(f"Tokenizer loaded.")
+    gc.collect()
 
     # Setting the parameters for the layer switching
     destination_layer_path_source_layer_path_mapping_list = [
@@ -172,6 +174,7 @@ def perform_layer_redundancy_analysis(
     else:
         start_from_swap = {benchmark_id: 0 for benchmark_id in benchmark_ids}
 
+    gc.collect()
     for benchmark_id in benchmark_ids:
         logger.info(f"Starting the evaluation for the benchmark: {benchmark_id}, starting from: {start_from_swap[benchmark_id]}")
         print(f"Starting the evaluation for the benchmark: {benchmark_id}, starting from: {start_from_swap[benchmark_id]}")
@@ -190,6 +193,7 @@ def perform_layer_redundancy_analysis(
             # Evaluating the model
             results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id, benchmark_evaluation_args, device)
             logger.info(f"Results: {results}")
+            gc.collect()
 
             performance_dict[benchmark_id][
                 (str(destination_layer_path_source_layer_path_mapping.keys()),
@@ -205,7 +209,7 @@ def perform_layer_redundancy_analysis(
             logger.info(f"Partial data stored.")
 
             torch.cuda.empty_cache()
-            #gc.collect()
+            gc.collect()
 
         redundant_performance_dict = {
             (str(redundant_layer_path_source_layer_path_mapping.keys()), str(redundant_layer_path_source_layer_path_mapping.values())): performance_dict[benchmark_id][str(original_model_layer_path_source_layer_path_mapping.keys()), str(original_model_layer_path_source_layer_path_mapping.values())]
