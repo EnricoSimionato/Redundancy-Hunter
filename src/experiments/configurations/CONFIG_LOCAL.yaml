@@ -15,11 +15,9 @@ benchmark_ids:
     - "truthfulqa_mc1"
 evaluation_args:
     truthfulqa_mc1:
-        batch_size: 1
-        limit: 1
+        batch_size: 8
     arc_challenge:
-        batch_size: 1
-        limit: 1
+        batch_size: 8
 
 targets:
     - ["layer_index", "mlp", "c_fc"]
