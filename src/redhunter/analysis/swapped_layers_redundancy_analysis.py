@@ -15,7 +15,7 @@ import re
 from exporch import Config, get_available_device
 
 from exporch.utils.causal_language_modeling import load_model_for_causal_lm, load_tokenizer_for_causal_lm
-from exporch import evaluate_model_on_benchmark
+from exporch.experiment import evaluate_model_on_benchmark
 from exporch.utils.plot_utils.heatmap import plot_heatmap
 
 from redhunter.analysis.swapped_layers_redundancy_analysis_utils import LayerSwitchingWrapperModel
