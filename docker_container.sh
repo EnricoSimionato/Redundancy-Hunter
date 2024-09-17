@@ -1,9 +1,26 @@
 #!/bin/bash
 
-# Checking if both username and password are provided
-if [ "$#" -ne 2 ]; then
-    echo "Usage: $0 <docker-username> <docker-password>"
+# Function to show usage
+usage() {
+    echo "Usage: $0 [--new-image] <docker-username> <docker-password>"
     exit 1
+}
+
+# Check if at least two arguments are provided
+if [ "$#" -lt 2 ]; then
+    usage
+fi
+
+# Parse flags
+NEW_IMAGE_FLAG=false
+if [ "$1" == "--new-image" ]; then
+    NEW_IMAGE_FLAG=true
+    shift
+fi
+
+# Check if username and password are provided
+if [ "$#" -ne 2 ]; then
+    usage
 fi
 
 DOCKER_USERNAME=$1
@@ -13,6 +30,12 @@ CONTAINER_NAME="redhunter"
 
 # Logging in to Docker
 echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
+
+# Handle --new-image flag
+if [ "$NEW_IMAGE_FLAG" == true ]; then
+    echo "Removing old Docker image $IMAGE_NAME."
+    docker rmi -f $IMAGE_NAME
+fi
 
 # Check if the Docker image exists locally
 if [[ "$(docker images -q $IMAGE_NAME 2> /dev/null)" == "" ]]; then
