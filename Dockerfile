@@ -9,6 +9,7 @@ WORKDIR /Redundancy-Hunter
 COPY . .
 # Installing dependencies
 RUN pip install -r requirements.txt
+RUN huggingface-cli login --token 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
 # Setting the command to run the script
 CMD ["python3", "src/redhunter/analysis_launcher.py", "CONFIG_SERVER.yaml"]
 
