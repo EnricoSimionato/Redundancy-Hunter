@@ -2,5 +2,6 @@ numpy
 seaborn
 torch
 transformers
+sentencepiece
 
 git+https://EnricoSimionato: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@github.com/EnricoSimionato/Experiment-Orchestrator.git@master#egg=exporch
