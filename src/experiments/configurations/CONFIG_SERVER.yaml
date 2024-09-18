@@ -5,19 +5,29 @@ analysis_type: "swapped_layers_redundancy_analysis"
 version: "0"
 
 # model_id: "mistralai/Mistral-7B-v0.3" # model_id: "bert-base-uncased"
-model_id: "EleutherAI/gpt-neo-1.3B"
-quantization: null
-dtype: "float32"
+model_id: "mistralai/Mistral-7B-v0.3"
+quantization: 4bit
 
-tokenizer_id: "EleutherAI/gpt-neo-1.3B"
+#model_id: "EleutherAI/gpt-neo-1.3B"
+#quantization: null
+#dtype: "float32"
+
+#tokenizer_id: "EleutherAI/gpt-neo-1.3B"
+tokenizer_id: "mistralai/Mistral-7B-v0.3"
 
 benchmark_ids:
-    - "truthfulqa_mc1"
+    - "hellaswag"
+#    - "truthfulqa_mc1"
 evaluation_args:
     truthfulqa_mc1:
         batch_size: 8
+        num_fewshot: 0
     arc_challenge:
         batch_size: 8
+        num_fewshot: 25
+    hellaswag:
+        batch_size: 8
+        num_fewshot: 10
 
 targets:
     - ["layer_index", "mlp", "c_fc"]

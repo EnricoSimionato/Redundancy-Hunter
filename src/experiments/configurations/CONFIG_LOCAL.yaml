@@ -16,8 +16,13 @@ benchmark_ids:
 evaluation_args:
     truthfulqa_mc1:
         batch_size: 8
+        num_fewshot: 0
     arc_challenge:
         batch_size: 8
+        num_fewshot: 25
+    hellaswag:
+        batch_size: 8
+        num_fewshot: 10
 
 targets:
     - ["layer_index", "mlp", "c_fc"]
