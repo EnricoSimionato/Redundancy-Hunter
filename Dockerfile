@@ -1,6 +1,8 @@
 FROM python
 # Setting the PYTHONPATH
 ENV PYTHONPATH=/Redundancy-Hunter/src
+# Setting
+ENV HUGGINGFACE_HUB_TOKEN=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
 # Setting the working directory
 WORKDIR /Redundancy-Hunter
 # Copying the entire contents of the Redundancy-Hunter directory
