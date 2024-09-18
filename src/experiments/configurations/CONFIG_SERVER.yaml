@@ -30,8 +30,11 @@ evaluation_args:
         num_fewshot: 10
 
 targets:
-    - ["layer_index", "mlp", "c_fc"]
-    - ["layer_index", "mlp", "c_proj"]
+#    - ["layer_index", "mlp", "c_fc"]
+#    - ["layer_index", "mlp", "c_proj"]
+    - ["layer_index", "mlp", "gate_proj"]
+    - ["layer_index", "mlp", "up_proj"]
+    - ["layer_index", "mlp", "down_proj"]
 
 num_layers: 24
 
