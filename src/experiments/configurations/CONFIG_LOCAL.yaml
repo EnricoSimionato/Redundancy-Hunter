@@ -2,7 +2,7 @@ path_to_storage: "src/experiments/results"
 
 analysis_type: "swapped_layers_redundancy_analysis"
 
-version: "0"
+version: "5"
 
 # model_id: "mistralai/Mistral-7B-v0.3" # model_id: "bert-base-uncased"
 model_id: "src/experiments/models/gpt-neo-1.3B"
@@ -12,25 +12,23 @@ dtype: "float32"
 tokenizer_id: "EleutherAI/gpt-neo-1.3B"
 
 benchmark_ids:
-    - "truthfulqa_mc1"
+    - "hellaswag"
+#    - "truthfulqa_mc1"
+#    - "arc_challenge"
 evaluation_args:
     truthfulqa_mc1:
-        batch_size: 8
-        num_fewshot: 0
+        batch_size: 16
     arc_challenge:
-        batch_size: 8
-        num_fewshot: 25
+        batch_size: 16
     hellaswag:
-        batch_size: 8
-        num_fewshot: 10
-
+        batch_size: 16
 targets:
     - ["layer_index", "mlp", "c_fc"]
     - ["layer_index", "mlp", "c_proj"]
-
+replacement_procedure: "all_equal"
 num_layers: 24
 
-figure_size: [30, 30]
+figure_size: [36, 36]
 
 verbose: 1
 device: "mps"

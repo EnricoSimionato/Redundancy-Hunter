@@ -1,6 +1,7 @@
-import os
-import sys
 import logging
+import os
+import pickle as pkl
+import sys
 
 from exporch import Config, check_path_to_storage
 
@@ -58,7 +59,7 @@ def main() -> None:
 
     if len(sys.argv) < 2:
         raise Exception("Please provide the name of the configuration file.\n"
-                        "Example: python rank_analysis_launcher.py config_name")
+                        "Example: python src/redhunter/analysis_launcher.py config_name")
 
     # Extracting the configuration name and the environment
     config_file_name = sys.argv[1]
@@ -78,10 +79,12 @@ def main() -> None:
     mandatory_keys = list(set(mandatory_keys) - set(not_used_keys_mapping[configuration.get("analysis_type")] if configuration.get("analysis_type") in not_used_keys_mapping.keys() else []))
     configuration.check_mandatory_keys(mandatory_keys)
 
+    analysis_type = configuration.get("analysis_type")
+
     # Checking the path to the storage
     file_available, directory_path, file_name = check_path_to_storage(
         configuration.get("path_to_storage"),
-        configuration.get("analysis_type"),
+        analysis_type,
         configuration.get("model_id").split("/")[-1],
         configuration.get("version") if configuration.contains("version") else None,
     )
@@ -111,13 +114,20 @@ def main() -> None:
     logger.info(f"Configuration file: {config_file_name}.")
 
     # Checking if the analysis type is recognized
-    if configuration.get("analysis_type") not in analysis_mapping.keys():
+    if analysis_type not in analysis_mapping.keys():
         logger.error(f"The analysis type is not recognized.")
         raise Exception("The analysis type is not recognized.")
 
+    # Loading the data if the file is available, otherwise process the model
+    data = None
+    if file_available:
+        print(f"The file '{configuration.get('file_path')}' is available.")
+        with open(configuration.get("file_path"), "rb") as f:
+            data = pkl.load(f)
+
     # Performing the analysis
-    logger.info(f"Starting the analysis {configuration.get('analysis_type')}.")
-    analysis_mapping[configuration.get("analysis_type")](configuration)
+    logger.info(f"Starting the analysis {analysis_type}.")
+    analysis_mapping[analysis_type](configuration, data)
 
     # Storing the configuration
     configuration.store(configuration.get("directory_path"))
