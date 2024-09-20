@@ -29,7 +29,7 @@ evaluation_args:
 targets:
     - ["layer_index", "mlp", "c_fc"]
     - ["layer_index", "mlp", "c_proj"]
-replacement_procedure: "all_equal"
+replacement_procedure: "subsequent"
 num_layers: 24
 
 #targets:
