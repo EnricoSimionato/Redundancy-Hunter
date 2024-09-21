@@ -84,8 +84,8 @@ class LayerReplacementAnalysis(AnalysisExperiment):
             result_dictionary: dict[str, dict[tuple[str, str], dict[str, dict[str, float]]]]
     ) -> tuple[dict[str, list[str]], dict[str, list[str]], dict[str, np.ndarray]]:
         """
-        Post-processes the result dictionary to extract the unique grouped elements and the performance arrays for each
-        task.
+        Formats the result dictionary to be plotted extracting the unique grouped elements for the first and second
+        elements, and the performance arrays for each task.
 
         Args:
             result_dictionary (dict[str, dict[tuple[str, str], dict[str, float]]]):
@@ -100,6 +100,11 @@ class LayerReplacementAnalysis(AnalysisExperiment):
         # Helper function to extract tuples from string
         def extract_tuples(s):
             return re.findall(r"\('(.*?)', '(.*?)', '(.*?)'\)", s)
+
+        # Helper function to extract the first number found in a string
+        def extract_first_number(s):
+            match = re.search(r'\d+', s)
+            return int(match.group()) if match else float('inf')
 
         task_specific_first_elements = {}
         task_specific_second_elements = {}
@@ -120,6 +125,10 @@ class LayerReplacementAnalysis(AnalysisExperiment):
                     first_groups.append(first_tuples)
                 if second_tuples not in second_groups:
                     second_groups.append(second_tuples)
+
+            # Sort first and second groups based on the first number present in them
+            first_groups.sort(key=lambda x: extract_first_number(x))
+            second_groups.sort(key=lambda x: extract_first_number(x))
 
             task_specific_first_elements[task] = first_groups
             task_specific_second_elements[task] = second_groups
@@ -238,7 +247,7 @@ class LayerReplacementAnalysis(AnalysisExperiment):
             if ("original", "original") not in performance_dict[benchmark_id].keys():
                 original_model_results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id,
                                                       evaluation_args[benchmark_id], device)
-                # original_model_results = {benchmark_id: {"acc,none": 0.5}} # Testing
+                #original_model_results = {benchmark_id: {"acc,none": 0.7}} # Testing
                 performance_dict[benchmark_id][("original", "original")] = original_model_results
                 self.log(f"Results of the original model: {original_model_results}")
                 print(f"Results of the original model: {original_model_results}")
@@ -261,7 +270,7 @@ class LayerReplacementAnalysis(AnalysisExperiment):
                 self.log(f"Starting the evaluation of the model on the device {model_wrapper.get_model().device}.")
                 results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id,
                                                       benchmark_evaluation_args, device)
-                # results = {benchmark_id: {"acc,none": 0.5}} # Testing
+                #results = {benchmark_id: {"acc,none": 0.5}} # Testing
                 self.log(f"Results: {results}")
                 gc.collect()
 
@@ -330,10 +339,13 @@ class LayerReplacementAnalysis(AnalysisExperiment):
 
         fig_size = config.get("figure_size") if config.contains("figure_size") else (36, 36)
         destination_layer_path_source_layer_path_mapping_list, performance_dict = data
-        original_model_performance = {benchmark_id: all_benchmark_results.pop(("original", "original")) for benchmark_id, all_benchmark_results in performance_dict.items()}
-        overwritten_layers_labels_row_list, duplicated_layers_labels_column_list, post_processed_results_list = self.format_result_dictionary_to_plot(
-            performance_dict)
 
+        # Extracting the results for the original model
+        original_model_performance = {benchmark_id: all_benchmark_results.pop(("original", "original")) for benchmark_id, all_benchmark_results in performance_dict.items()}
+        self.log(f"Original model performance: {original_model_performance}")
+
+        # Plotting the results
+        overwritten_layers_labels_row_list, duplicated_layers_labels_column_list, post_processed_results_list = self.format_result_dictionary_to_plot(performance_dict)
         for benchmark_id in post_processed_results_list.keys():
             self.log(f"Printing the results for task: {benchmark_id}")
             plot_heatmap(
