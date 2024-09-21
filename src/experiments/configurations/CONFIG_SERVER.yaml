@@ -17,11 +17,11 @@ benchmark_ids:
 #    - "arc_challenge"
 evaluation_args:
     truthfulqa_mc1:
-        batch_size: 16
+        batch_size: 32
     arc_challenge:
-        batch_size: 16
+        batch_size: 32
     hellaswag:
-        batch_size: 16
+        batch_size: 32
 
 #targets:
 #    - ["layer_index", "mlp", "c_fc"]
