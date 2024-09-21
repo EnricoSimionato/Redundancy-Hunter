@@ -1,9 +1,6 @@
-import logging
-import os
-import pickle as pkl
 import sys
 
-from exporch import Config, check_path_to_storage
+from exporch import GeneralPurposeExperimentFactory
 
 from redhunter.analysis.activations_analysis import perform_activations_analysis, perform_delta_activations_analysis
 from redhunter.analysis.head_analysis import perform_head_analysis, perform_heads_similarity_analysis
@@ -12,9 +9,15 @@ from redhunter.analysis.matrix_initialization_analysis import (
     perform_global_matrices_initialization_analysis
 )
 from redhunter.analysis.sorted_layers_rank_analysis import perform_sorted_layers_rank_analysis
-from redhunter.analysis.swapped_layers_redundancy_analysis import perform_swapped_layers_redundancy_analysis
+from redhunter.analysis.swapped_layers_redundancy_analysis import (
+    AllLayerCouplesReplacementAnalysis,
+    AllLayerCouplesComputeAlsoOriginalReplacementAnalysis,
+    SubsequentLayerReplacementAnalysis,
+    AllLayersReplacementAnalysis
+)
 
 
+"""
 analysis_mapping = {
     "simple_initialization_analysis": perform_simple_initialization_analysis,
     "global_matrices_initialization_analysis": perform_global_matrices_initialization_analysis,
@@ -53,9 +56,7 @@ not_used_keys_mapping = {
 
 
 def main() -> None:
-    """
     Main method to start the various types of analyses on a deep model.
-    """
 
     if len(sys.argv) < 2:
         raise Exception("Please provide the name of the configuration file.\n"
@@ -131,6 +132,29 @@ def main() -> None:
 
     # Storing the configuration
     configuration.store(configuration.get("directory_path"))
+"""
+
+GeneralPurposeExperimentFactory.register({
+    "all_layer_couples_replacement_redundancy_analysis": AllLayerCouplesReplacementAnalysis,
+    "all_layer_couples_compute_also_original_replacement_redundancy_analysis": AllLayerCouplesComputeAlsoOriginalReplacementAnalysis,
+    "all_layers_replacement_redundancy_analysis": AllLayersReplacementAnalysis,
+    "subsequent_layer_replacement_redundancy_analysis": SubsequentLayerReplacementAnalysis,
+})
+
+def main() -> None:
+    """
+    Main method to start the various types of analyses on a deep model.
+    """
+
+    if len(sys.argv) < 2:
+        raise Exception("Please provide the name of the configuration file.\n"
+                        "Example: python src/redhunter/analysis_launcher.py config_name")
+
+    # Extracting the configuration name and the environment
+    config_file_name = sys.argv[1]
+
+    analysis_experiment = GeneralPurposeExperimentFactory.create(f"src/experiments/configurations/{config_file_name}")
+    analysis_experiment.launch_experiment()
 
 
 if __name__ == "__main__":

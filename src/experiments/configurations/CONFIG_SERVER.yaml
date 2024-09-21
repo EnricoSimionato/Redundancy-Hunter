@@ -1,18 +1,15 @@
 path_to_storage: "src/experiments/results"
 
-analysis_type: "swapped_layers_redundancy_analysis"
+experiment_type: "subsequent_layer_replacement_redundancy_analysis"
 
-#version: "0"
+model_id: "mistralai/Mistral-7B-v0.3"
+quantization: 4bit
 
-#model_id: "mistralai/Mistral-7B-v0.3"
+#model_id: "EleutherAI/gpt-neo-1.3B"
 #quantization: 4bit
 
-model_id: "EleutherAI/gpt-neo-1.3B"
-quantization: null
-dtype: "float32"
-
-tokenizer_id: "EleutherAI/gpt-neo-1.3B"
-#tokenizer_id: "mistralai/Mistral-7B-v0.3"
+#tokenizer_id: "EleutherAI/gpt-neo-1.3B"
+tokenizer_id: "mistralai/Mistral-7B-v0.3"
 
 benchmark_ids:
     - "hellaswag"
@@ -26,17 +23,17 @@ evaluation_args:
     hellaswag:
         batch_size: 16
 
-targets:
-    - ["layer_index", "mlp", "c_fc"]
-    - ["layer_index", "mlp", "c_proj"]
-replacement_procedure: "subsequent"
-num_layers: 24
-
 #targets:
-#    - ["layer_index", "mlp", "gate_proj"]
-#    - ["layer_index", "mlp", "up_proj"]
-#    - ["layer_index", "mlp", "down_proj"]
-#num_layers: 32
+#    - ["layer_index", "mlp", "c_fc"]
+#    - ["layer_index", "mlp", "c_proj"]
+#replacement_procedure: "subsequent"
+#num_layers: 24
+
+targets:
+    - ["layer_index", "mlp", "gate_proj"]
+    - ["layer_index", "mlp", "up_proj"]
+    - ["layer_index", "mlp", "down_proj"]
+num_layers: 32
 
 figure_size: [30, 30]
 

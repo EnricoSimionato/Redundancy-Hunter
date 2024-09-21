@@ -9,21 +9,30 @@ import transformers
 from redhunter.utils.list_utils.list_utils import is_subsequence
 
 
-class LayerSwitchingWrapperModel:
+class LayerReplacingModelWrapper:
     """
-    Class to switch layers in a model.
+    Class to replace layers in a model with other layers of the same model.
 
     Args:
         model ([transformers.PreTrainedModel | transformers.AutoModel]):
-            The model.
+            The model to be wrapped.
         destination_layer_path_source_layer_path_mapping (dict[list | tuple: list | tuple]):
-            The layers to switch.
+            The mapping between the path to the layers to be replaced and the path to the layers to be used to replace
+            them.
 
     Attributes:
         model ([transformers.PreTrainedModel | transformers.AutoModel]):
-            The model.
+            The wrapped model.
         destination_layer_path_source_layer_path_mapping (dict[list | tuple: list | tuple]):
-            The layers to switch.
+            The mapping between the path to the layers to be replaced and the path to the layers to be used to replace
+            them.
+            The structure of the dictionary is as follows:
+            {
+                [destination_layer_path_1]: [source_layer_path_1],
+                [destination_layer_path_2]: [source_layer_path_2],
+                ...
+
+            }
     """
 
     def __init__(
@@ -31,13 +40,12 @@ class LayerSwitchingWrapperModel:
             model: [transformers.PreTrainedModel | transformers.AutoModel],
             destination_layer_path_source_layer_path_mapping: dict[list | tuple: list | tuple] = None,
     ) -> None:
-
         self.model = model
         self.destination_layer_path_source_layer_path_mapping = destination_layer_path_source_layer_path_mapping
         self.overwritten_layers = {}
 
         if self.destination_layer_path_source_layer_path_mapping is not None:
-            self.switch_layers()
+            self.replace_layers()
 
     def get_model(
             self
@@ -47,7 +55,7 @@ class LayerSwitchingWrapperModel:
 
         Returns:
             [transformers.PreTrainedModel | transformers.AutoModel]:
-                The model.
+                The wrapped model.
         """
 
         return self.model
@@ -56,11 +64,12 @@ class LayerSwitchingWrapperModel:
             self
     ) -> dict[list | tuple: list | tuple]:
         """
-        Returns the layers to switch.
+        Returns the mapping between the layers to be replaced and the layers to be used to replace them.
 
         Returns:
             dict[list | tuple: list | tuple]:
-                The layers to switch.
+                The mapping between the path to the layers to be replaced and the path to the layers to be used to replace
+                them.
         """
 
         return self.destination_layer_path_source_layer_path_mapping
@@ -70,38 +79,39 @@ class LayerSwitchingWrapperModel:
             model: [transformers.PreTrainedModel | transformers.AutoModel]
     ) -> None:
         """
-        Sets the model.
+        Sets the model to be wrapped.
 
         Args:
             model ([transformers.PreTrainedModel | transformers.AutoModel]):
-                The model.
+                The model to be wrapped.
         """
 
         self.model = model
         if self.destination_layer_path_source_layer_path_mapping is not None:
-            self.switch_layers()
+            self.replace_layers()
 
     def set_destination_layer_path_source_layer_path_mapping(
             self,
             destination_layer_path_source_layer_path_mapping: dict[list | tuple: list | tuple]
     ) -> None:
         """
-        Sets the layers to switch.
+        Sets the mapping between the layers to be replaced and the layers to be used to replace them.
 
         Args:
             destination_layer_path_source_layer_path_mapping (dict[list | tuple: list | tuple]):
-                The layers to switch.
+                The mapping between the path to the layers to be replaced and the path to the layers to be used to replace
+                them.
         """
 
         self.destination_layer_path_source_layer_path_mapping = destination_layer_path_source_layer_path_mapping
         if self.destination_layer_path_source_layer_path_mapping is not None:
-            self.switch_layers()
+            self.replace_layers()
 
-    def switch_layers(
+    def replace_layers(
             self
     ) -> None:
         """
-        Switches the layers of the model.
+        Replaces the layers in the model based on the mapping.
         """
 
         source_paths = set(self.get_destination_layer_path_source_layer_path_mapping().values())
@@ -129,9 +139,9 @@ class LayerSwitchingWrapperModel:
             module_tree ([transformers.PreTrainedModel | transformers.AutoModel | torch.Module]):
                 The module tree.
             source_layer_path_source_layer_mapping (dict[str: str]):
-                The destination layer path source layer mapping.
+                The mapping between the path to the layers to be used to replace other layers and their actual weights.
             path (list, optional):
-                The path. Defaults to None.
+                The current path. Defaults to None.
         """
 
         for layer_name in module_tree._modules.keys():
@@ -164,15 +174,16 @@ class LayerSwitchingWrapperModel:
             path: list = None
     ) -> None:
         """
-        Fills the destination layers with the source layers.
+        Replaces the destination layers path with the actual source layers.
 
         Args:
             module_tree ([transformers.PreTrainedModel | transformers.AutoModel | torch.Module]):
                 The module tree.
             destination_layer_path_source_layer_mapping (dict[str: torch.Module]):
-                The destination layer path source layer mapping.
+                The mapping between the path to the layers to be replaced and the layers that should be used to replace
+                them.
             path (list, optional):
-                The path. Defaults to None.
+                The current path. Defaults to None.
         """
 
         for layer_name in module_tree._modules.keys():
@@ -204,11 +215,11 @@ class LayerSwitchingWrapperModel:
                     new_path
                 )
 
-    def reset_switch(
+    def reset_replacement(
             self
     ) -> None:
         """
-        Resets the switch.
+        Resets the replacement.
         """
 
         if len(self.overwritten_layers) == 0:
