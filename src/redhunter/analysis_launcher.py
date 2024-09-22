@@ -15,7 +15,7 @@ from redhunter.analysis.sorted_layers_rank_analysis import (
 
 from redhunter.analysis.swapped_layers_redundancy_analysis import (
     AllLayerCouplesReplacementAnalysis,
-    AllLayerCouplesComputeAlsoOriginalReplacementAnalysis,
+    SameLayerCouplesReplacementAnalysis,
     SubsequentLayerReplacementAnalysis,
     AllLayersReplacementAnalysis
 )
@@ -140,7 +140,7 @@ def main() -> None:
 
 GeneralPurposeExperimentFactory.register({
     "all_layer_couples_replacement_redundancy_analysis": AllLayerCouplesReplacementAnalysis,
-    "all_layer_couples_compute_also_original_replacement_redundancy_analysis": AllLayerCouplesComputeAlsoOriginalReplacementAnalysis,
+    "same_layer_couples_replacement_redundancy_analysis": SameLayerCouplesReplacementAnalysis,
     "all_layers_replacement_redundancy_analysis": AllLayersReplacementAnalysis,
     "subsequent_layer_replacement_redundancy_analysis": SubsequentLayerReplacementAnalysis,
 })

@@ -56,7 +56,6 @@ class LayerReplacementAnalysis(AnalysisExperiment):
             self._postprocess_results()
         self._plot(self.config, self.data)
 
-    # TODO test
     @staticmethod
     def get_performance_dict_key_from_mapping(
             mapping: dict[tuple, tuple]
@@ -79,6 +78,7 @@ class LayerReplacementAnalysis(AnalysisExperiment):
 
         return str(keys), str(values)
 
+    # TODO fix documentaiotn
     @staticmethod
     def extract_and_sort_unique_elements_from_result_dictionary(
             result_dictionary: dict[str, dict[tuple[str, str], dict[str, dict[str, float]]]]
@@ -452,7 +452,7 @@ class AllLayerCouplesReplacementAnalysis(LayerReplacementAnalysis):
             {
                 tuple(el if el != "layer_index" else f"{i}" for el in targets):
                     tuple(el if el != "layer_index" else f"{j}" for el in targets) for targets in targets_lists
-            } for i in range(num_layers) for j in range(num_layers)
+            } for i in range(num_layers) for j in range(num_layers) if i != j
         ]
 
     @override
@@ -484,7 +484,7 @@ class AllLayerCouplesReplacementAnalysis(LayerReplacementAnalysis):
         self.log("The results have been post-processed and stored.")
 
 
-class AllLayerCouplesComputeAlsoOriginalReplacementAnalysis(LayerReplacementAnalysis):
+class SameLayerCouplesReplacementAnalysis(LayerReplacementAnalysis):
     def get_layers_replacement_mapping(
             self
     ) -> list[dict[tuple, tuple]]:
@@ -505,7 +505,7 @@ class AllLayerCouplesComputeAlsoOriginalReplacementAnalysis(LayerReplacementAnal
             {
                 tuple(el if el != "layer_index" else f"{i}" for el in targets):
                     tuple(el if el != "layer_index" else f"{j}" for el in targets) for targets in targets_lists
-            } for i in range(num_layers) for j in range(num_layers) if (i != j or (i == 0 and j == 0))
+            } for i in range(num_layers) for j in range(num_layers) if i == j
         ]
 
 class AllLayersReplacementAnalysis(LayerReplacementAnalysis):
@@ -533,6 +533,7 @@ class AllLayersReplacementAnalysis(LayerReplacementAnalysis):
             } for i in range(num_layers)
         ]
 
+    # TODO documentaion
     @override
     def format_result_dictionary_to_plot(
             self,
