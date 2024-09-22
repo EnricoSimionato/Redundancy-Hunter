@@ -8,7 +8,11 @@ from redhunter.analysis.matrix_initialization_analysis import (
     perform_simple_initialization_analysis,
     perform_global_matrices_initialization_analysis
 )
-from redhunter.analysis.sorted_layers_rank_analysis import perform_sorted_layers_rank_analysis
+from redhunter.analysis.sorted_layers_rank_analysis import (
+    perform_sorted_layers_rank_analysis
+)
+
+
 from redhunter.analysis.swapped_layers_redundancy_analysis import (
     AllLayerCouplesReplacementAnalysis,
     AllLayerCouplesComputeAlsoOriginalReplacementAnalysis,

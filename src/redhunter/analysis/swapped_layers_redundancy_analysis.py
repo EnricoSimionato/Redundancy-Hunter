@@ -79,16 +79,24 @@ class LayerReplacementAnalysis(AnalysisExperiment):
 
         return str(keys), str(values)
 
-    def _format_result_dictionary_to_plot(
-            self,
-            result_dictionary: dict[str, dict[tuple[str, str], dict[str, dict[str, float]]]]
-    ) -> tuple[dict[str, list[str]], dict[str, list[str]], dict[str, np.ndarray]]:
-        pass
-
+    @staticmethod
     def extract_and_sort_unique_elements_from_result_dictionary(
-            self,
             result_dictionary: dict[str, dict[tuple[str, str], dict[str, dict[str, float]]]]
     ) -> tuple[dict[str, list[str]], dict[str, list[str]], dict[str, np.ndarray]]:
+        """
+        Extracts the unique grouped elements for the first and second elements, and the performance arrays for each task
+        from the result dictionary.
+
+        Args:
+            result_dictionary (dict[str, dict[tuple[str, str], dict[str, float]]]):
+                The dictionary containing the results for each task.
+
+        Returns:
+            tuple[dict[str, list[str]], dict[str, list[str]], dict[str, np.ndarray]]:
+                A tuple containing the task-specific unique grouped elements for the first and second elements, and the
+                performance arrays for each task.
+        """
+
         # Helper function to extract tuples from string
         def extract_tuples(s):
             return re.findall(r"\('(.*?)', '(.*?)', '(.*?)'\)", s)
@@ -142,15 +150,21 @@ class LayerReplacementAnalysis(AnalysisExperiment):
 
     def format_result_dictionary_to_plot(
             self,
-            result_dictionary: dict[str, dict[tuple[str, str], dict[str, dict[str, float]]]]
+            task_specific_first_elements: dict[str, list[str]],
+            task_specific_second_elements: dict[str, list[str]],
+            performance_arrays: dict[str, np.ndarray]
     ) -> tuple[dict[str, list[str]], dict[str, list[str]], dict[str, np.ndarray]]:
         """
         Formats the result dictionary to be plotted extracting the unique grouped elements for the first and second
         elements, and the performance arrays for each task.
 
         Args:
-            result_dictionary (dict[str, dict[tuple[str, str], dict[str, float]]]):
-                The dictionary containing the results for each task.
+            task_specific_first_elements (dict[str, list[str]]):
+                The task-specific unique grouped elements for the first elements.
+            task_specific_second_elements (dict[str, list[str]]):
+                The task-specific unique grouped elements for the second elements.
+            performance_arrays (dict[str, np.ndarray]):
+                The performance arrays for each task.
 
         Returns:
             tuple[dict[str, list[tuple[str, str]]], dict[str, list[tuple[str, str]]], dict[str, np.ndarray]]:
@@ -167,6 +181,28 @@ class LayerReplacementAnalysis(AnalysisExperiment):
                 formatted_element[benchmark_id] = [group[1:-1].replace("), (", ")\n(") for group in element[benchmark_id]]
 
         return formatted_elements[0], formatted_elements[1], performance_arrays
+
+    def _format_result_dictionary_to_plot(
+            self,
+            result_dictionary: dict[str, dict[tuple[str, str], dict[str, dict[str, float]]]]
+    ) -> tuple[dict[str, list[str]], dict[str, list[str]], dict[str, np.ndarray]]:
+        """
+        Formats the result dictionary to be plotted extracting the unique grouped elements for the first and second
+        elements, and the performance arrays for each task.
+
+        Args:
+            result_dictionary (dict[str, dict[tuple[str, str], dict[str, float]]]):
+                The dictionary containing the results for each task.
+
+        Returns:
+            tuple[dict[str, list[tuple[str, str]]], dict[str, list[tuple[str, str]]], dict[str, np.ndarray]]:
+                A tuple containing the task-specific unique grouped elements for the first and second elements, and the
+                performance arrays for each task
+        """
+
+        return self.format_result_dictionary_to_plot(
+            *self.extract_and_sort_unique_elements_from_result_dictionary(result_dictionary)
+        )
 
     @abstractmethod
     def get_layers_replacement_mapping(
@@ -265,9 +301,9 @@ class LayerReplacementAnalysis(AnalysisExperiment):
             logging.info("Evaluating the original model")
             print("Evaluating the original model")
             if ("original", "original") not in performance_dict[benchmark_id].keys():
-                #original_model_results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id,
-                #                                      evaluation_args[benchmark_id], device)
-                original_model_results = {benchmark_id: {"acc,none": 0.7}} # Testing
+                original_model_results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id,
+                                                      evaluation_args[benchmark_id], device)
+                #original_model_results = {benchmark_id: {"acc,none": 0.7}} # Testing
                 performance_dict[benchmark_id][("original", "original")] = original_model_results
                 self.log(f"Results of the original model: {original_model_results}")
                 print(f"Results of the original model: {original_model_results}")
@@ -288,9 +324,9 @@ class LayerReplacementAnalysis(AnalysisExperiment):
 
                 # Evaluating the model
                 self.log(f"Starting the evaluation of the model on the device {model_wrapper.get_model().device}.")
-                #results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id,
-                #                                      benchmark_evaluation_args, device)
-                results = {benchmark_id: {"acc,none": 0.5}} # Testing
+                results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id,
+                                                      benchmark_evaluation_args, device)
+                #results = {benchmark_id: {"acc,none": 0.5}} # Testing
                 self.log(f"Results: {results}")
                 gc.collect()
 
@@ -365,7 +401,7 @@ class LayerReplacementAnalysis(AnalysisExperiment):
         self.log(f"Original model performance: {original_model_performance}")
 
         # Plotting the results
-        overwritten_layers_labels_row_list, duplicated_layers_labels_column_list, post_processed_results_list = self.format_result_dictionary_to_plot(performance_dict)
+        overwritten_layers_labels_row_list, duplicated_layers_labels_column_list, post_processed_results_list = self._format_result_dictionary_to_plot(performance_dict)
         for benchmark_id in post_processed_results_list.keys():
             self.log(f"Printing the results for task: {benchmark_id}")
             plot_heatmap(
@@ -502,24 +538,12 @@ class AllLayersReplacementAnalysis(LayerReplacementAnalysis):
     @override
     def format_result_dictionary_to_plot(
             self,
-            result_dictionary: dict[str, dict[tuple[str, str], dict[str, dict[str, float]]]]
+            task_specific_first_elements: dict[str, list[str]],
+            task_specific_second_elements: dict[str, list[str]],
+            performance_arrays: dict[str, np.ndarray]
     ) -> tuple[dict[str, list[str]], dict[str, list[str]], dict[str, np.ndarray]]:
         """
-        Formats the result dictionary to be plotted extracting the unique grouped elements for the first and second
-        elements, and the performance arrays for each task.
-
-        Args:
-            result_dictionary (dict[str, dict[tuple[str, str], dict[str, float]]]):
-                The dictionary containing the results for each task.
-
-        Returns:
-            tuple[dict[str, list[tuple[str, str]]], dict[str, list[tuple[str, str]]], dict[str, np.ndarray]]:
-                A tuple containing the task-specific unique grouped elements for the first and second elements, and the
-                performance arrays for each task
         """
-
-        task_specific_first_elements, task_specific_second_elements, performance_arrays = self.extract_and_sort_unique_elements_from_result_dictionary(
-            result_dictionary)
 
         formatted_fist_element = {}
         for benchmark_id in task_specific_first_elements.keys():
