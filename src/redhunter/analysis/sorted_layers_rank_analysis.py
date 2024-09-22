@@ -13,7 +13,6 @@ import torch
 
 from exporch import Config, Verbose
 
-from exporch.utils.causal_language_modeling import load_model_for_causal_lm
 from exporch.utils.plot_utils.heatmap import get_text_color, set_axis_labels, plot_heatmap_with_additional_row_column
 
 from redhunter.analysis.analysis_utils import AnalysisTensorWrapper, AnalysisTensorDict, extract_based_on_path
