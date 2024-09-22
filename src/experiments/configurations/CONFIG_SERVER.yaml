@@ -1,6 +1,8 @@
 path_to_storage: "src/experiments/results"
 
-experiment_type: "subsequent_layer_replacement_redundancy_analysis"
+experiment_type: "all_layer_couples_replacement_redundancy_analysis"
+
+version: "0"
 
 model_id: "mistralai/Mistral-7B-v0.3"
 quantization: 4bit
