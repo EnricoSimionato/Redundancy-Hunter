@@ -172,8 +172,6 @@ class LayerReplacementAnalysis(AnalysisExperiment):
                 performance arrays for each task
         """
 
-        task_specific_first_elements, task_specific_second_elements, performance_arrays = self.extract_and_sort_unique_elements_from_result_dictionary(result_dictionary)
-
         formatted_elements = ({}, {})
         elements = (task_specific_first_elements, task_specific_second_elements)
         for element, formatted_element in zip(elements, formatted_elements):
