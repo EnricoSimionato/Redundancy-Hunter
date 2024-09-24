@@ -106,11 +106,11 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
         self.process_tensor_wrappers(original_tensor_wrappers)
         configurations_to_remove = []
         gc.collect()
-        for configurations_index, configurations_to_analyze in enumerate(remaining_configurations_to_analyze):
-            self.log(f"Analyzing the layers with the configurations: {configurations_to_analyze}")
-            print(f"Analyzing the layers with the configurations: {configurations_to_analyze}")
+        for configurations_index, configuration_to_analyze in enumerate(remaining_configurations_to_analyze):
+            self.log(f"Analyzing the layers with the configurations: {configuration_to_analyze}")
+            print(f"Analyzing the layers with the configurations: {configuration_to_analyze}")
             # Getting the layers to analyze
-            layer_wrappers_to_analyze = original_tensor_wrappers.get_wrappers_for_analysis(configurations_to_analyze)
+            layer_wrappers_to_analyze = original_tensor_wrappers.get_wrappers_for_analysis(configuration_to_analyze)
             layers_in_block_1 = layer_wrappers_to_analyze[0]
             layers_in_block_2 = layer_wrappers_to_analyze[1]
 
@@ -137,9 +137,9 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
 
             # Storing the data
             self.set_data((original_tensor_wrappers, sorted_layers_deltas, objective_function_stats_dict))
-            configurations_to_remove.append(configurations_to_analyze)
+            configurations_to_remove.append(configuration_to_analyze)
             if (configurations_index + 1) % store_interval == 0:
-                self.store_data()
+                #self.store_data()
                 # Removing the configurations that have been analyzed
                 original_tensor_wrappers.remove_layer_paths_configuration_to_analyze(configurations_to_remove)
                 configurations_to_remove = []
@@ -149,6 +149,7 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
         # Storing the data
         self.set_data((original_tensor_wrappers, sorted_layers_deltas, objective_function_stats_dict))
         self.store_data()
+        original_tensor_wrappers.remove_layer_paths_configuration_to_analyze(configurations_to_remove)
 
     def get_experiments_configurations(
             self
@@ -510,7 +511,8 @@ class ResettableElementsSortedLayersCompressionAnalysisWithConcatenatedMatrices(
             self,
             config: Config,
             data: Any
-    ) -> tuple[list[list[np.ndarray | torch.Tensor]], list[list[np.ndarray | torch.Tensor]], list[list[str]], list[list[str]]]:
+    ) -> tuple[
+        list[list[np.ndarray | torch.Tensor]], list[list[np.ndarray | torch.Tensor]], list[list[str]], list[list[str]]]:
         """
         Returns the formatted results to plot.
 
@@ -531,37 +533,50 @@ class ResettableElementsSortedLayersCompressionAnalysisWithConcatenatedMatrices(
                 The labels of the columns of the matrices to plot
         """
 
-        # Helper function to sort the elements in the dictionary keys
-        def custom_sort_key(elem):
-            # Convert '0' to integer for correct sorting and keep others as strings
-            return [int(e) if e.isdigit() else e for e in elem]
+        # Helper function to extract all numerical sequences from tuple keys
+        def extract_numerical_sequence(key):
+            # Helper function to extract numbers from a single sublist
+            def extract_numbers(sublist):
+                return [int(s) for s in sublist if s.isdigit()]
+
+            # Extract numbers from all parts of the tuple key (both parts)
+            seq1 = tuple(extract_numbers(sublist) for sublist in key[0])
+            seq2 = tuple(extract_numbers(sublist) for sublist in key[1])
+
+            # Flatten nested tuples and return as one single tuple
+            flat_seq1 = tuple(num for sublist in seq1 for num in sublist)
+            flat_seq2 = tuple(num for sublist in seq2 for num in sublist)
+
+            return flat_seq1, flat_seq2
 
         _, _, results_dict = data
 
         row_elements = set()
         column_elements = set()
 
+        # Collect row and column elements
         for key in results_dict.keys():
             row_elements.add(key[0])
             column_elements.add(key[1])
 
-        # Converting sets to sorted lists using the custom sort key
-        first_elements = sorted(row_elements, key=custom_sort_key)
-        second_elements = sorted(column_elements, key=custom_sort_key)
+        # Convert sets to sorted lists using the custom numeric sequence extraction and sorting
+        first_elements = sorted(row_elements, key=lambda elem: extract_numerical_sequence((elem, elem)))
+        second_elements = sorted(column_elements, key=lambda elem: extract_numerical_sequence((elem, elem)))
 
         # Creating matrices to be plotted
         final_sorting_matrix = np.zeros((len(first_elements), len(second_elements)))
         initial_sorting_matrix = np.zeros((len(first_elements), len(second_elements)))
 
-        # Filling matrices with values from the dictionary
-        for key, value in data.items():
+        # Fill matrices with values from the dictionary
+        for key, value in results_dict.items():
             first_index = first_elements.index(key[0])
             second_index = second_elements.index(key[1])
 
             final_sorting_matrix[first_index, second_index] = value["final_sorting_resettable_elements"]
             initial_sorting_matrix[first_index, second_index] = value["initial_sorting_resettable_elements"]
 
-        return [[initial_sorting_matrix,], [final_sorting_matrix,]], None, [first_elements, first_elements], [second_elements, second_elements]
+        return [[initial_sorting_matrix], [final_sorting_matrix]], None, [first_elements, first_elements], [
+            second_elements, second_elements]
 
 
 class SimilarityBasedSortedLayersCompressionAnalysis(SortedLayersCompressionAnalysis):
