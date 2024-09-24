@@ -1,0 +1,669 @@
+from __future__ import annotations
+
+from abc import abstractmethod
+import gc
+import os
+from typing import Any, override
+from tqdm import tqdm
+
+import numpy as np
+
+import torch
+
+from exporch import Config, get_available_device
+from exporch.utils.causal_language_modeling import load_model_for_causal_lm
+from exporch.utils.plot_utils import plot_heatmap_with_additional_row_column, plot_heatmap
+
+from redhunter.analysis.analysis_utils import AnalysisTensorDict, AnalysisTensorWrapper, extract_based_on_path
+from redhunter.analysis.delta_layers_rank_analysis import compute_delta_matrices
+from redhunter.analysis_experiment import AnalysisExperiment
+
+from redhunter.analysis.sorted_layers_compression_analysis_utils import sort_rows, sort_columns
+
+
+class SortedLayersCompressionAnalysis(AnalysisExperiment):
+    """
+    Class to perform the analysis of the sorted layers rank.
+    """
+
+    mandatory_keys = ["num_layers"]
+
+    def __init__(
+            self,
+            config_file_path: str
+    ) -> None:
+
+        super().__init__(config_file_path)
+
+        self.title = "Sorted Layers Compression Analysis"
+        self.axis_titles = None
+        self.x_title = "Index of the block"
+        self.y_title = "Index of the block"
+
+    def _perform_analysis(
+            self
+    ) -> None:
+        """
+        Performs the aligned layers rank analysis.
+        """
+
+        self._perform_sorted_layers_compression_analysis()
+
+    def _perform_sorted_layers_compression_analysis(
+            self
+    ) -> None:
+        """
+        Performs the sorted layers compression analysis.
+        """
+
+        self._compute_sorted_layers_deltas()
+        self._process_layer_deltas()
+        self.store_data()
+
+    def _compute_sorted_layers_deltas(
+            self
+    ) -> None:
+        """
+        Computes the difference between the layers in a block and the sorted layers in the other block.
+        """
+
+        gc.collect()
+        config = self.config
+        verbose = config.get_verbose()
+        store_interval = config.get("store_interval") if config.contains("store_interval") else 10
+
+        if self.get_data() is not None:
+            # Loading the data
+            original_tensor_wrappers, sorted_layers_deltas, objective_function_stats_dict = self.data
+        else:
+            # Initializing the data structures
+            original_tensor_wrappers = AnalysisTensorDict()
+            sorted_layers_deltas = AnalysisTensorDict()
+            objective_function_stats_dict = {}
+
+            # Loading the model
+            model = load_model_for_causal_lm(config)
+
+            # Extracting the layers to analyze
+            extract_based_on_path(
+                module_tree=model,
+                target_paths=self.config.get("targets"),
+                layers_storage=original_tensor_wrappers,
+                blacklist=config.get("blacklist") if config.contains("blacklist") else [],
+                verbose=verbose
+            )
+            self.log(f"Layers extracted: {original_tensor_wrappers}")
+
+            # Setting the configurations to analyze
+            original_tensor_wrappers.set_layer_paths_configurations_to_analyze(self.get_experiments_configurations())
+
+            # Storing the data
+            self.set_data((original_tensor_wrappers, sorted_layers_deltas, objective_function_stats_dict))
+            self.store_data()
+
+        # Iterating over the remaining configurations that have to be analyzed
+        remaining_configurations_to_analyze = original_tensor_wrappers.get_layer_paths_configurations_to_analyze()
+        self.process_tensor_wrappers(original_tensor_wrappers)
+        configurations_to_remove = []
+        gc.collect()
+        for configurations_index, configurations_to_analyze in enumerate(remaining_configurations_to_analyze):
+            self.log(f"Analyzing the layers with the configurations: {configurations_to_analyze}")
+            print(f"Analyzing the layers with the configurations: {configurations_to_analyze}")
+            # Getting the layers to analyze
+            layer_wrappers_to_analyze = original_tensor_wrappers.get_wrappers_for_analysis(configurations_to_analyze)
+            layers_in_block_1 = layer_wrappers_to_analyze[0]
+            layers_in_block_2 = layer_wrappers_to_analyze[1]
+
+            # Sorting the rows/columns of a layer based minimizing a certain metrics given a couple of transformer blocks
+            #sorting_axes = [1 if index == len(layers_in_block_2) - 1 else 0 for index in range(len(layers_in_block_2))]
+            #sorting_indices, objective_function_stats = self.compute_indices_sorting(layers_in_block_1, layers_in_block_2, sorting_axes)
+
+            # Using the ordering to sort the vectors in the matrices of block 2
+            #sorted_layers_in_block_2 = self.sort_elements_in_layers(layers_in_block_2, sorting_indices, sorting_axes)
+
+            # Subtracting the layers of block and the sorted layers of another block
+            #delta_matrices = compute_delta_matrices(layers_in_block_1, sorted_layers_in_block_2)
+
+            # Processing the delta matrices of the layers based on the specific operations that the analysis performs
+            #for delta_matrix in delta_matrices:
+            #    self.process_tensor_wrappers(delta_matrix)
+            objective_function_stats = {
+                "final_sorting_resettable_elements": 42,
+                "initial_sorting_resettable_elements": 2018
+            }
+            key = (tuple(tuple(layer.get_path()) for layer in layers_in_block_1), tuple(tuple(layer.get_path()) for layer in layers_in_block_2))
+            #sorted_layers_deltas.set_tensor(key, delta_matrices)
+            objective_function_stats_dict[key] = objective_function_stats
+
+            # Storing the data
+            self.set_data((original_tensor_wrappers, sorted_layers_deltas, objective_function_stats_dict))
+            configurations_to_remove.append(configurations_to_analyze)
+            if (configurations_index + 1) % store_interval == 0:
+                self.store_data()
+                # Removing the configurations that have been analyzed
+                original_tensor_wrappers.remove_layer_paths_configuration_to_analyze(configurations_to_remove)
+                configurations_to_remove = []
+
+            gc.collect()
+
+        # Storing the data
+        self.set_data((original_tensor_wrappers, sorted_layers_deltas, objective_function_stats_dict))
+        self.store_data()
+
+    def get_experiments_configurations(
+            self
+    ) -> list[list[list[list[str]]]]:
+        """
+        Returns the configurations of the experiments to perform the analysis.
+        The structure of the configurations is the following:
+        [
+            [
+                [
+                    [str, ...], # Path of a single layer as a list of strings
+                     ...
+                ], # List of paths for the first block matrices
+                [
+                    [str, ...], # Path of a single layer as a list of strings
+                     ...
+                ] # List of paths for the second block matrices
+            ],
+            ...
+        ]
+
+        Returns:
+            list[list[list[list[str]]]]:
+                The configurations of the experiments to perform the analysis.
+        """
+
+        targets_lists = self.config.get("targets")
+        num_layers = self.config.get("num_layers")
+
+        return [
+            [
+                [[str(i) if string == "block_index" else string for string in target] for target in targets_lists],
+                [[str(j) if string == "block_index" else string for string in target] for target in targets_lists]
+            ] for i in range(num_layers) for j in range(num_layers)
+        ]
+
+    def process_tensor_wrappers(
+            self,
+            tensor_wrapper: AnalysisTensorWrapper
+    ) -> None:
+        """
+        Processes the tensor wrapper to compute the quantities needed to perform the analysis.
+
+        Args:
+            tensor_wrapper (AnalysisTensorWrapper):
+                The tensor wrapper to process.
+        """
+
+        pass
+
+    @abstractmethod
+    def compute_indices_sorting(
+            self,
+            layers_in_block_1: list[AnalysisTensorWrapper],
+            layers_in_block_2: list[AnalysisTensorWrapper],
+            axes: list[int]
+    ) -> [list, dict[torch.Tensor]]:
+        """
+        Computes the indices for the sorting of the elements of the layers in block 2 that minimizes a certain loss with
+        respect to the layers in block 1.
+
+        Args:
+            layers_in_block_1 (list[AnalysisTensorWrapper]):
+                The list of layers in block 1.
+            layers_in_block_2 (list[AnalysisTensorWrapper]):
+                The list of layers in block 2.
+            axes (list[int]):
+                The list of axes where the components have to be sorted.
+        """
+
+        pass
+
+    def sort_elements_in_layers(
+            self,
+            layers_in_block: list[AnalysisTensorWrapper],
+            sorting_indices_list: list[list[int]] | list[int],
+            axes: list[int],
+    ) -> list[AnalysisTensorWrapper]:
+        """
+        Sorts the elements in the layers based on a list of indices.
+
+        Args:
+            layers_in_block (list[AnalysisTensorWrapper]):
+                The list of layers in the block.
+            sorting_indices_list (list[list[int]] | list[int]):
+                The list of the lists of indices to sort the components.
+            axes (list[int]):
+                The list of axes where the components have to be sorted.
+
+        Returns:
+            list[AnalysisTensorWrapper]:
+                The matrices sorted in the given dimension based on the sorting indices.
+        """
+
+        if len(layers_in_block) <= 0:
+            raise ValueError("The list of layers in the block must contain at least one element.")
+        if len(sorting_indices_list) <= 0:
+            raise ValueError("The list of indices must contain at least one element.")
+        if len(axes) <= 0:
+            raise ValueError("The list of axes must contain at least one element.")
+
+        if isinstance(sorting_indices_list[0], int):
+            sorting_indices_list = [sorting_indices_list for _ in range(len(layers_in_block))]
+
+        if len(sorting_indices_list) != len(layers_in_block) or len(axes) != len(layers_in_block):
+            raise ValueError("The length of the ordering and axes lists must be the same as the length of the layers list.")
+
+        sorted_layers = []
+        for layer, ordering, axis in zip(layers_in_block, sorting_indices_list, axes):
+            if axis == 0:
+                sorted_tensor = sort_rows(layer.get_tensor(), ordering)
+            elif axis == 1:
+                sorted_tensor = sort_columns(layer.get_tensor(), ordering)
+            else:
+                raise Exception(f"Axis '{axis}' not supported.")
+
+            sorted_layers.append(
+                AnalysisTensorWrapper(
+                    sorted_tensor,
+                    name=layer.get_name(),
+                    label=layer.get_label(),
+                    path=layer.get_path(),
+                    block_index=layer.get_block_index(),
+                    layer=layer.get_layer()
+                )
+            )
+        self.log(f"Layers sorted for the tensor with labels:\n\t{'\n\t'.join([layer.get_label() for layer in layers_in_block])}.")
+
+        return sorted_layers
+
+    def _process_layer_deltas(
+            self
+    ) -> None:
+        """
+        Processes the deltas of the layers to compute the quantities needed to perform the analysis.
+        """
+
+        pass
+
+    def _plot_results(
+            self,
+            config: Config,
+            data: Any
+    ) -> None:
+        """
+        Plots the results obtained from the analysis.
+        The performed analysis will depend on the specific subclass of AnalysisExperiment.
+
+        Args:
+            config (Config):
+                The configuration of the experiment.
+            data (Any):
+                The data obtained from the analysis.
+        """
+
+        # Extracting the information to plot
+        statistics_delta_layers, statistics_original_layers, row_labels, column_labels = self._get_formatted_results_to_plot(config, data)
+
+        # Plotting the results
+        if statistics_original_layers is None:
+            plot_heatmap(
+                statistics_delta_layers,
+                save_path=os.path.join(config.get("directory_path"), "heatmap.png"),
+                title=self.title + f"(Model: {config.get("model_id")})", axis_titles=self.axis_titles,
+                x_title=self.x_title, y_title=self.y_title,
+                x_labels=column_labels, y_labels=row_labels,
+                fig_size=config.get("figure_size") if config.contains("figure_size") else (30, 30)
+            )
+        else:
+            plot_heatmap_with_additional_row_column(
+                statistics_delta_layers,
+                statistics_original_layers, statistics_original_layers,
+                os.path.join(config.get("directory_path"), "heatmap.png"),
+                self.title + f"(Model: {config.get("model_id")})", self.axis_titles,
+                [self.x_title,], [self.y_title,],
+                row_labels, column_labels,
+                fig_size=config.get("figure_size") if config.contains("figure_size") else (30, 30)
+            )
+
+    def _get_formatted_results_to_plot(
+            self,
+            config: Config,
+            data: Any
+    ) -> list[list[list[np.ndarray | torch.Tensor]], list[list[np.ndarray | torch.Tensor]], list[list[str]], list[list[str]]]:
+        """
+        Returns the formatted results to plot.
+
+        Args:
+            config (Config):
+                The configuration of the experiment.
+            data (Any):
+                The data obtained from the analysis.
+
+        Returns:
+            list[list[np.ndarray | torch.Tensor]]:
+                The matrices to plot containing the results of the analysis on the delta matrices.
+            list[list[np.ndarray | torch.Tensor]]:
+                The matrices to plot related to the original layers, if any.
+            list[list[str]]:
+                The labels of the rows of the matrices to plot.
+            list[list[str]]:
+                The labels of the columns of the matrices to plot
+        """
+
+        return self.get_formatted_results_to_plot(config, data)
+
+    @abstractmethod
+    def get_formatted_results_to_plot(
+            self,
+            config: Config,
+            data: Any
+    ) -> list[list[list[np.ndarray | torch.Tensor]], list[list[np.ndarray | torch.Tensor]], list[list[str]], list[list[str]]]:
+        """
+        Returns the formatted results to plot.
+
+        Args:
+            config (Config):
+                The configuration of the experiment.
+            data (Any):
+                The data obtained from the analysis.
+
+        Returns:
+            list[list[np.ndarray | torch.Tensor]]:
+                The matrices to plot containing the results of the analysis on the delta matrices.
+            list[list[np.ndarray | torch.Tensor]]:
+                The matrices to plot related to the original layers, if any.
+            list[list[str]]:
+                The labels of the rows of the matrices to plot.
+            list[list[str]]:
+                The labels of the columns of the matrices to plot
+        """
+
+        pass
+
+
+class ResettableElementsSortedLayersCompressionAnalysisWithConcatenatedMatrices(SortedLayersCompressionAnalysis):
+    mandatory_keys = ["zero_threshold"]
+
+    def __init__(
+            self,
+            config_file_path: str
+    ) -> None:
+
+        super().__init__(config_file_path)
+        self.title = "Resettable Elements Sorted Layers Compression Analysis with Concatenated Matrices"
+        self.axis_titles = ["Number of elements that can be reset before sorting",
+                            "Number of elements that can be reset after sorting"]
+
+    @override
+    def process_tensor_wrappers(
+            self,
+            tensor_wrapper: AnalysisTensorWrapper
+    ) -> None:
+        """
+        Processes the tensor wrapper to compute the quantities needed to perform the analysis.
+
+        Args:
+            tensor_wrapper (AnalysisTensorWrapper):
+                The tensor wrapper to process.
+        """
+
+        pass
+
+    @override
+    def compute_indices_sorting(
+            self,
+            layers_in_block_1: list[AnalysisTensorWrapper],
+            layers_in_block_2: list[AnalysisTensorWrapper],
+            axes: list[int]
+    ) -> [list, dict[torch.Tensor]]:
+        """
+        Computes the indices for the sorting of the elements of the layers in block 2 that maximizes the number of zeroed
+        elements in the difference with respect to the layers in block 1 when thresholding all the smallest components.
+
+        Args:
+            layers_in_block_1 (list[AnalysisTensorWrapper]):
+                The list of layers in block 1.
+            layers_in_block_2 (list[AnalysisTensorWrapper]):
+                The list of layers in block 2.
+            axes (list[int]):
+                The list of axes where the components have to be sorted.
+        """
+
+        if len(layers_in_block_1) != len(layers_in_block_2):
+            raise ValueError("The number of layers in block 1 and block 2 must be the same.")
+        if len(axes) != len(layers_in_block_1) or len(axes) != len(layers_in_block_2):
+            raise ValueError(f"The length of the axes list must be the same as the length of the layers list.\n"
+                             f"The length of the axes list is {len(axes)}; the length of the layers in block 1 is "
+                             f"{len(layers_in_block_1)}; the length of the layers in block 2 is {len(layers_in_block_2)}.")
+        if not all(axis == 0 or axis == 1 for axis in axes):
+            raise ValueError("The axes must be 0 or 1.")
+
+        zero_threshold = self.config.get("zero_threshold")
+        device = get_available_device(self.config.get("device") if self.config.contains("device") else "cpu")
+        batch_size = self.config.get("batch_size") if self.config.contains("batch_size") else 1
+
+        concatenated_matrix_1 = torch.cat(
+            [layer.get_tensor().t() if axis == 0
+             else layer.get_tensor()
+             for layer, axis in zip(layers_in_block_1, axes)],
+            dim=0
+        ).to(device)
+        concatenated_matrix_2 = torch.cat(
+            [layer.get_tensor().t() if axis == 0
+             else layer.get_tensor()
+             for layer, axis in zip(layers_in_block_2, axes)],
+            dim=0
+        ).to(device)
+        if concatenated_matrix_1.shape != concatenated_matrix_2.shape:
+            raise ValueError("The shapes of the concatenated matrices must be the same.")
+        concatenated_dim, dim_to_sort = concatenated_matrix_1.shape
+
+        sorting_stats = {
+            "initial_sorting_resettable_elements": torch.sum(torch.abs(concatenated_matrix_1 - concatenated_matrix_2) < zero_threshold).item(),
+            "manhattan_norm_initial_sorting_resettable_elements": torch.sum(torch.abs(concatenated_matrix_1 - concatenated_matrix_2) * (torch.abs(concatenated_matrix_1 - concatenated_matrix_2) < zero_threshold)).item(),
+            "frobenius_norm_initial_sorting_resettable_elements": torch.norm(concatenated_matrix_1 - concatenated_matrix_2 * (torch.abs(concatenated_matrix_1 - concatenated_matrix_2) < zero_threshold)).item()
+        }
+
+        self.log("Counting the number of smaller-than-threshold entries for each couple of stacked internal vectors of "
+                 "the layers.")
+        print("Counting the number of smaller-than-threshold entries for each couple of stacked internal vectors of "
+              "the layers.")
+
+        count_matrix = torch.zeros((dim_to_sort, dim_to_sort), device=concatenated_matrix_1.device)
+        # Iterating over batches to optimize the computation of the value of the objective function
+        for start in tqdm(range(0, dim_to_sort, batch_size)):
+            end = min(start + batch_size, dim_to_sort)
+
+            # Expanding the dimensions for broadcasting and computing the difference between the two matrices
+            diff =  concatenated_matrix_1[:, start:end].unsqueeze(2) - concatenated_matrix_2.unsqueeze(1)
+
+            # Counting how many elements are smaller than the threshold
+            count_matrix[start:end, :] += (diff.abs() < zero_threshold).sum(dim=0)
+
+        # Greedily associating columns
+        sorting_indices = []
+        used_indices = torch.zeros(dim_to_sort, dtype=torch.bool)
+
+        for count_row in tqdm(count_matrix.transpose(0, 1)):
+            # Getting the indices that have not been used yet
+            available_indices = torch.arange(dim_to_sort)[~used_indices]
+            # Getting the index of the column with the maximum number of resettable elements
+            max_index = available_indices[torch.argmax(count_row[available_indices])]
+            sorting_indices.append(max_index.item())
+            used_indices[max_index] = True
+
+        final_delta_concatenated_matrices = concatenated_matrix_1 - sort_columns(concatenated_matrix_2, sorting_indices)
+
+        sorting_stats.update({
+            "final_sorting_resettable_elements": torch.sum(torch.abs(final_delta_concatenated_matrices) < zero_threshold).item(),
+            "manhattan_norm_final_sorting_resettable_elements": torch.sum(torch.abs(final_delta_concatenated_matrices) * (torch.abs(final_delta_concatenated_matrices) < zero_threshold)).item(),
+            "frobenius_norm_final_sorting_resettable_elements": torch.norm(final_delta_concatenated_matrices * (torch.abs(final_delta_concatenated_matrices) < zero_threshold)).item()
+        })
+
+        return sorting_indices, sorting_stats
+
+    @override
+    def get_formatted_results_to_plot(
+            self,
+            config: Config,
+            data: Any
+    ) -> tuple[list[list[np.ndarray | torch.Tensor]], list[list[np.ndarray | torch.Tensor]], list[list[str]], list[list[str]]]:
+        """
+        Returns the formatted results to plot.
+
+        Args:
+            config (Config):
+                The configuration of the experiment.
+            data (Any):
+                The data obtained from the analysis.
+
+        Returns:
+            list[list[np.ndarray | torch.Tensor]]:
+                The matrices to plot containing the results of the analysis on the delta matrices.
+            list[list[np.ndarray | torch.Tensor]]:
+                The matrices to plot related to the original layers, if any.
+            list[list[str]]:
+                The labels of the rows of the matrices to plot.
+            list[list[str]]:
+                The labels of the columns of the matrices to plot
+        """
+
+        # Helper function to sort the elements in the dictionary keys
+        def custom_sort_key(elem):
+            # Convert '0' to integer for correct sorting and keep others as strings
+            return [int(e) if e.isdigit() else e for e in elem]
+
+        _, _, results_dict = data
+
+        row_elements = set()
+        column_elements = set()
+
+        for key in results_dict.keys():
+            row_elements.add(key[0])
+            column_elements.add(key[1])
+
+        # Converting sets to sorted lists using the custom sort key
+        first_elements = sorted(row_elements, key=custom_sort_key)
+        second_elements = sorted(column_elements, key=custom_sort_key)
+
+        # Creating matrices to be plotted
+        final_sorting_matrix = np.zeros((len(first_elements), len(second_elements)))
+        initial_sorting_matrix = np.zeros((len(first_elements), len(second_elements)))
+
+        # Filling matrices with values from the dictionary
+        for key, value in data.items():
+            first_index = first_elements.index(key[0])
+            second_index = second_elements.index(key[1])
+
+            final_sorting_matrix[first_index, second_index] = value["final_sorting_resettable_elements"]
+            initial_sorting_matrix[first_index, second_index] = value["initial_sorting_resettable_elements"]
+
+        return [[initial_sorting_matrix,], [final_sorting_matrix,]], None, [first_elements, first_elements], [second_elements, second_elements]
+
+
+class SimilarityBasedSortedLayersCompressionAnalysis(SortedLayersCompressionAnalysis):
+    mandatory_keys = ["similarity_guide_index", "singular_values_threshold"]
+
+    def __init__(
+            self,
+            config_file_path: str
+    ) -> None:
+
+        super().__init__(config_file_path)
+
+        self.title = "Similarity-Based Sorted Layers Compression Analysis"
+        self.axis_titles = None
+        self.x_title = "Index of the block"
+        self.y_title = "Index of the block"
+
+    @override
+    def process_tensor_wrappers(
+            self,
+            tensor_wrapper: AnalysisTensorWrapper
+    ) -> None:
+        """
+        Processes the tensor wrapper to compute the quantities needed to perform the analysis.
+
+        Args:
+            tensor_wrapper (AnalysisTensorWrapper):
+                The tensor wrapper to process.
+        """
+
+        pass
+
+    @override
+    def compute_indices_sorting(
+            self,
+            layers_in_block_1: list[AnalysisTensorWrapper],
+            layers_in_block_2: list[AnalysisTensorWrapper],
+            axes: list[int]
+    ) -> [list, dict[torch.Tensor]]:
+        """
+        Computes the indices for the sorting of the elements of the layers in block 2 that maximizes the number of zeroed
+        elements in the difference with respect to the layers in block 1 when thresholding all the smallest components.
+
+        Args:
+            layers_in_block_1 (list[AnalysisTensorWrapper]):
+                The list of layers in block 1.
+            layers_in_block_2 (list[AnalysisTensorWrapper]):
+                The list of layers in block 2.
+            axes (list[int]):
+                The list of axes where the components have to be sorted.
+        """
+
+        if len(layers_in_block_1) != len(layers_in_block_2):
+            raise ValueError("The number of layers in block 1 and block 2 must be the same.")
+        if len(axes) != len(layers_in_block_1) or len(axes) != len(layers_in_block_2):
+            raise ValueError(f"The length of the axes list must be the same as the length of the layers list.\n"
+                             f"The length of the axes list is {len(axes)}; the length of the layers in block 1 is "
+                             f"{len(layers_in_block_1)}; the length of the layers in block 2 is {len(layers_in_block_2)}.")
+        if not all(axis == 0 or axis == 1 for axis in axes):
+            raise ValueError("The axes must be 0 or 1.")
+
+        zero_threshold = self.config.get("zero_threshold")
+
+        concatenated_matrix_1 = torch.cat(
+            [layer.get_tensor() if axis == 0
+             else layer.get_tensor().transpose()
+             for layer, axis in zip(layers_in_block_1, axes)],
+            dim=0
+        )
+        concatenated_matrix_2 = torch.cat(
+            [layer.get_tensor() if axis == 0
+             else layer.get_tensor().transpose()
+             for layer, axis in zip(layers_in_block_1, axes)],
+            dim=0
+        )
+
+        return [], {}
+
+    @override
+    def get_formatted_results_to_plot(
+            self,
+            config: Config,
+            data: Any
+    ) -> tuple[list[list[np.ndarray | torch.Tensor]], list[list[np.ndarray | torch.Tensor]], list[list[str]], list[list[str]]]:
+        """
+        Returns the formatted results to plot.
+
+        Args:
+            config (Config):
+                The configuration of the experiment.
+            data (Any):
+                The data obtained from the analysis.
+
+        Returns:
+            list[list[np.ndarray | torch.Tensor]]:
+                The matrices to plot containing the results of the analysis on the delta matrices.
+            list[list[np.ndarray | torch.Tensor]]:
+                The matrices to plot related to the original layers, if any.
+            list[list[str]]:
+                The labels of the rows of the matrices to plot.
+            list[list[str]]:
+                The labels of the columns of the matrices to plot
+        """
+        
+        return [], [], [], []

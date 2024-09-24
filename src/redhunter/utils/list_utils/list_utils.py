@@ -1,14 +1,14 @@
 def is_subsequence(
-        subsequence: list,
-        sequence: list
+        subsequence: list | tuple,
+        sequence: list | tuple
 ) -> bool:
     """
     Checks if a sequence is a subsequence of another sequence.
 
     Args:
-        subsequence (list):
+        subsequence (list | tuple):
             The subsequence.
-        sequence (list):
+        sequence (list | tuple):
             The sequence.
 
     Returns:
