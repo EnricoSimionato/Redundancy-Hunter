@@ -28,6 +28,7 @@ class AnalysisExperiment(GeneralPurposeExperiment, ABC):
                              "to False.")
 
         if not self.config.contains("just_plot") or not self.config.get("just_plot"):
+            self.log(f"Starting the analysis.")
             self._perform_analysis()
             self._postprocess_results()
         self._plot_results(self.config, self.data)

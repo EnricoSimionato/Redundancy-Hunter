@@ -48,7 +48,6 @@ class LayerReplacementAnalysis(AnalysisExperiment):
 
         gc.collect()
         config = self.config
-        self.log(f"Starting the analysis.")
 
         # Setting the parameters for the layer switching
         destination_layer_path_source_layer_path_mapping_list = self.get_layers_replacement_mapping()
@@ -93,9 +92,9 @@ class LayerReplacementAnalysis(AnalysisExperiment):
             logging.info("Evaluating the original model")
             print("Evaluating the original model")
             if ("original", "original") not in performance_dict[benchmark_id].keys():
-                original_model_results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id,
-                                                      evaluation_args[benchmark_id], device)
-                #original_model_results = {benchmark_id: {"acc,none": 0.7}} # Testing
+                #original_model_results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id,
+                #                                      evaluation_args[benchmark_id], device)
+                original_model_results = {benchmark_id: {"acc_norm,none": 0.7}} # Testing
                 performance_dict[benchmark_id][("original", "original")] = original_model_results
                 self.log(f"Results of the original model: {original_model_results}")
                 print(f"Results of the original model: {original_model_results}")
@@ -116,14 +115,14 @@ class LayerReplacementAnalysis(AnalysisExperiment):
 
                 # Evaluating the model
                 self.log(f"Starting the evaluation of the model on the device {model_wrapper.get_model().device}.")
-                results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id,
-                                                      benchmark_evaluation_args, device)
-                #results = {benchmark_id: {"acc,none": 0.5}} # Testing
+                #results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id,
+                #                                      benchmark_evaluation_args, device)
+                results = {benchmark_id: {"acc_norm,none": 0.5}} # Testing
                 self.log(f"Results: {results}")
                 gc.collect()
 
-                # The key in the performance dictionary is a tuple containing the overwritten layers as first element and
-                # the ones used to overwrite the destination as second elements
+                # The key in the performance dictionary is a tuple containing the overwritten layers as the first
+                # element and the ones used to overwrite the destination as second elements
                 performance_dict[benchmark_id][
                     self.get_performance_dict_key_from_mapping(destination_layer_path_source_layer_path_mapping)
                 ] = results
@@ -285,7 +284,7 @@ class LayerReplacementAnalysis(AnalysisExperiment):
         """
         Formats the result dictionary to be plotted extracting the unique destination paths and the unique source paths
         and the performance arrays for each benchmark.
-        After the extraction of these elements they can be formatted in a different way by the specific analysis
+        After the extraction of these elements, they can be formatted in a different way by the specific analysis
         overriding the method 'format_result_dictionary_to_plot'.
 
         Args:
@@ -423,8 +422,8 @@ class AllLayerCouplesReplacementAnalysis(LayerReplacementAnalysis):
 
         return [
             {
-                tuple(el if el != "layer_index" else f"{i}" for el in targets):
-                    tuple(el if el != "layer_index" else f"{j}" for el in targets) for targets in targets_lists
+                tuple(el if el != "block_index" else f"{i}" for el in targets):
+                    tuple(el if el != "block_index" else f"{j}" for el in targets) for targets in targets_lists
             } for i in range(num_layers) for j in range(num_layers) if i != j
         ]
 
@@ -443,8 +442,8 @@ class AllLayerCouplesReplacementAnalysis(LayerReplacementAnalysis):
         num_layers = self.config.get("num_layers")
         redundant_mappings  = [
             {
-                tuple(el if el != "layer_index" else f"{i}" for el in targets):
-                    tuple(el if el != "layer_index" else f"{j}" for el in targets) for targets in targets_lists
+                tuple(el if el != "block_index" else f"{i}" for el in targets):
+                    tuple(el if el != "block_index" else f"{j}" for el in targets) for targets in targets_lists
             } for i in range(num_layers) for j in range(num_layers) if i == j
         ]
         for benchmark_id in performance_dict.keys():
@@ -476,8 +475,8 @@ class SameLayerCouplesReplacementAnalysis(LayerReplacementAnalysis):
 
         return [
             {
-                tuple(el if el != "layer_index" else f"{i}" for el in targets):
-                    tuple(el if el != "layer_index" else f"{j}" for el in targets) for targets in targets_lists
+                tuple(el if el != "block_index" else f"{i}" for el in targets):
+                    tuple(el if el != "block_index" else f"{j}" for el in targets) for targets in targets_lists
             } for i in range(num_layers) for j in range(num_layers) if i == j
         ]
 
@@ -501,13 +500,13 @@ class AllLayersReplacementAnalysis(LayerReplacementAnalysis):
 
         return [
             {
-                tuple(el if el != "layer_index" else f"{j}" for el in targets):
-                    tuple(el if el != "layer_index" else f"{i}" for el in targets)
+                tuple(el if el != "block_index" else f"{j}" for el in targets):
+                    tuple(el if el != "block_index" else f"{i}" for el in targets)
                 for targets in targets_lists for j in range(num_layers)
             } for i in range(num_layers)
         ]
 
-    # TODO documentaion
+    # TODO documentation
     @override
     def format_result_dictionary_to_plot(
             self,
@@ -561,7 +560,88 @@ class SubsequentLayerReplacementAnalysis(AllLayerCouplesReplacementAnalysis):
 
         return [
             {
-                tuple(el if el != "layer_index" else f"{i}" for el in targets):
-                    tuple(el if el != "layer_index" else f"{i + 1}" for el in targets) for targets in targets_lists
+                tuple(el if el != "block_index" else f"{i}" for el in targets):
+                    tuple(el if el != "block_index" else f"{i + 1}" for el in targets) for targets in targets_lists
             } for i in range(num_layers - 1)
+        ]
+
+
+class PreviousLayerReplacementAnalysis(AllLayerCouplesReplacementAnalysis):
+    def get_layers_replacement_mapping(
+            self
+    ) -> list[dict[tuple, tuple]]:
+        """
+        Returns the mapping on which the analysis has to be performed.
+        In the list of mappings to be analyzed, each one is a dictionary where the keys are the paths to the layers to
+        be replaced and the values are the paths to the layers that will replace them.
+
+        Returns:
+            list[dict[tuple, tuple]]:
+                The list of mappings to be analyzed.
+        """
+
+        targets_lists = self.config.get("targets")
+        num_layers = self.config.get("num_layers")
+
+        return [
+            {
+                tuple(el if el != "block_index" else f"{i + 1}" for el in targets):
+                    tuple(el if el != "block_index" else f"{i}" for el in targets) for targets in targets_lists
+            } for i in range(num_layers - 1)
+        ]
+
+
+class SpecificReplacedLayerReplacementAnalysis(AllLayerCouplesReplacementAnalysis):
+    mandatory_keys = ["replaced_block_index"]
+
+    def get_layers_replacement_mapping(
+            self
+    ) -> list[dict[tuple, tuple]]:
+        """
+        Returns the mapping on which the analysis has to be performed.
+        In the list of mappings to be analyzed, each one is a dictionary where the keys are the paths to the layers to
+        be replaced and the values are the paths to the layers that will replace them.
+
+        Returns:
+            list[dict[tuple, tuple]]:
+                The list of mappings to be analyzed.
+        """
+
+        targets_lists = self.config.get("targets")
+        num_layers = self.config.get("num_layers")
+        replaced_block_index = self.config.get("replaced_block_index")
+
+        return [
+            {
+                tuple(el if el != "block_index" else f"{replaced_block_index}" for el in targets):
+                    tuple(el if el != "block_index" else f"{i}" for el in targets) for targets in targets_lists
+            } for i in range(num_layers) if i != replaced_block_index
+        ]
+
+
+class SpecificReplacingLayerReplacementAnalysis(AllLayerCouplesReplacementAnalysis):
+    mandatory_keys = ["replacing_block_index"]
+
+    def get_layers_replacement_mapping(
+            self
+    ) -> list[dict[tuple, tuple]]:
+        """
+        Returns the mapping on which the analysis has to be performed.
+        In the list of mappings to be analyzed, each one is a dictionary where the keys are the paths to the layers to
+        be replaced and the values are the paths to the layers that will replace them.
+
+        Returns:
+            list[dict[tuple, tuple]]:
+                The list of mappings to be analyzed.
+        """
+
+        targets_lists = self.config.get("targets")
+        num_layers = self.config.get("num_layers")
+        replacing_block_index = self.config.get("replacing_block_index")
+
+        return [
+            {
+                tuple(el if el != "block_index" else f"{i}" for el in targets):
+                    tuple(el if el != "block_index" else f"{replacing_block_index}" for el in targets) for targets in targets_lists
+            } for i in range(num_layers) if i != replacing_block_index
         ]

@@ -1,37 +1,57 @@
+########################################    General configuration parameters    ########################################
 path_to_storage: "/content/drive/MyDrive/Thesis"
 
-analysis_type: "swapped_layers_redundancy_analysis"
+experiment_type: "all_layer_couples_replacement_redundancy_analysis"
 
 version: "0"
 
-# model_id: "mistralai/Mistral-7B-v0.3" # model_id: "bert-base-uncased"
-model_id: "EleutherAI/gpt-neo-1.3B"
-quantization: null
-dtype: "float32"
-
-tokenizer_id: "EleutherAI/gpt-neo-1.3B"
-
-benchmark_ids:
-    - "truthfulqa_mc1"
-evaluation_args:
-    truthfulqa_mc1:
-        batch_size: 8
-        num_fewshot: 0
-    arc_challenge:
-        batch_size: 8
-        num_fewshot: 25
-    hellaswag:
-        batch_size: 8
-        num_fewshot: 10
-
-targets:
-    - ["layer_index", "mlp", "c_fc"]
-    - ["layer_index", "mlp", "c_proj"]
-
-num_layers: 24
-
-figure_size: [30, 30]
+#just_plot: True
 
 verbose: 1
 device: "cuda"
 seed: 42
+
+########################################     Model configuration parameters     ########################################
+model_id: "mistralai/Mistral-7B-v0.3"
+quantization: 4bit
+
+#model_id: "EleutherAI/gpt-neo-1.3B"
+#quantization: 4bit
+
+########################################   Tokenizer configuration parameters   ########################################
+tokenizer_id: "mistralai/Mistral-7B-v0.3"
+#tokenizer_id: "EleutherAI/gpt-neo-1.3B"
+
+
+########################################       Analysis target parameters       ########################################
+replaced_block_index: 21
+targets:
+    - ["block_index", "mlp", "gate_proj"]
+    - ["block_index", "mlp", "up_proj"]
+    - ["block_index", "mlp", "down_proj"]
+num_layers: 32
+
+#targets:
+#    - ["block_index", "mlp", "c_fc"]
+#    - ["block_index", "mlp", "c_proj"]
+#replacement_procedure: "subsequent"
+#num_layers: 24
+
+########################################        Visualization parameters        ########################################
+figure_size: [30, 30]
+
+######################################## Layers replacement redundancy analysis ########################################
+benchmark_ids:
+    - "hellaswag"
+#    - "truthfulqa_mc1"
+#    - "arc_challenge"
+evaluation_args:
+    truthfulqa_mc1:
+        batch_size: 32
+    arc_challenge:
+        batch_size: 32
+    hellaswag:
+        batch_size: 32
+
+########################################         Sorted layers analysis         ########################################
+

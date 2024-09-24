@@ -1,18 +1,35 @@
+########################################    General configuration parameters    ########################################
 path_to_storage: "src/experiments/results"
 
-experiment_type: "all_layer_couples_replacement_redundancy_analysis"
+experiment_type: "specific_replaced_layer_replacement_redundancy_analysis"
 
 version: "0"
 
+#just_plot: True
+
+verbose: 1
+device: "cuda"
+seed: 42
+
+########################################     Model configuration parameters     ########################################
 model_id: "mistralai/Mistral-7B-v0.3"
 quantization: 4bit
 
-#model_id: "EleutherAI/gpt-neo-1.3B"
-#quantization: 4bit
-
-#tokenizer_id: "EleutherAI/gpt-neo-1.3B"
+########################################   Tokenizer configuration parameters   ########################################
 tokenizer_id: "mistralai/Mistral-7B-v0.3"
+#tokenizer_id: "EleutherAI/gpt-neo-1.3B"
 
+########################################       Analysis target parameters       ########################################
+targets:
+    - ["block_index", "mlp", "gate_proj"]
+    - ["block_index", "mlp", "up_proj"]
+    - ["block_index", "mlp", "down_proj"]
+num_layers: 32
+
+########################################        Visualization parameters        ########################################
+figure_size: [30, 30]
+
+######################################## Layers replacement redundancy analysis ########################################
 benchmark_ids:
     - "hellaswag"
 #    - "truthfulqa_mc1"
@@ -25,20 +42,7 @@ evaluation_args:
     hellaswag:
         batch_size: 32
 
-#targets:
-#    - ["layer_index", "mlp", "c_fc"]
-#    - ["layer_index", "mlp", "c_proj"]
-#replacement_procedure: "subsequent"
-#num_layers: 24
+replaced_block_index: 25
 
-targets:
-    - ["layer_index", "mlp", "gate_proj"]
-    - ["layer_index", "mlp", "up_proj"]
-    - ["layer_index", "mlp", "down_proj"]
-num_layers: 32
+########################################         Sorted layers analysis         ########################################
 
-figure_size: [30, 30]
-
-verbose: 1
-device: "cuda"
-seed: 42
