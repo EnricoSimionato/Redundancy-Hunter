@@ -1,26 +1,23 @@
 from __future__ import annotations
 
+import copy
+import re
 from typing import Any
-import pickle as pkl
 
 import numpy as np
 
 import torch
-import torch.nn as nn
 
 import transformers
 
-import re
-
-from exporch import Config, Verbose
-
-from exporch.utils.causal_language_modeling import load_model_for_causal_lm
+from exporch import Verbose
 
 from redhunter.analysis.rank_analysis_utils import (
     compute_explained_variance,
     compute_singular_values,
     RankAnalysisResult
 )
+from redhunter.utils.list_utils.list_utils import is_subsequence
 
 
 # Definition of the classes to perform the rank analysis
@@ -36,11 +33,11 @@ class AnalysisTensorWrapper:
             The name of the tensor. Defaults to None.
         label (str, optional):
             The label of the tensor. Defaults to None.
-        path (str, optional):
+        path (list, optional):
             The path of the tensor. Defaults to None.
         block_index (int, optional):
             The block index of the tensor. Defaults to None.
-        layer (nn.Module, optional):
+        layer (torch.nn.Module, optional):
             The layer of the tensor. Defaults to None.
         precision (int, optional):
             The precision of the relative rank of the tensor. Default to 2.
@@ -58,7 +55,7 @@ class AnalysisTensorWrapper:
             The path of the tensor.
         block_index (int):
             The block index of the tensor.
-        layer (nn.Module):
+        layer (torch.nn.Module):
             The layer of the tensor.
         singular_values (np.ndarray):
             The singular values of the tensor.
@@ -71,9 +68,9 @@ class AnalysisTensorWrapper:
             tensor: torch.Tensor,
             name: str = None,
             label: str = None,
-            path: str = None,
+            path: list = None,
             block_index: int = None,
-            layer: nn.Module = None,
+            layer: torch.nn.Module = None,
             precision: int = 2,
             verbose: Verbose = Verbose.INFO
     ) -> None:
@@ -141,12 +138,12 @@ class AnalysisTensorWrapper:
 
     def get_path(
             self
-    ) -> str:
+    ) -> list:
         """
         Returns the path of the tensor.
 
         Returns:
-            str:
+            list:
                 The path of the tensor.
         """
 
@@ -167,12 +164,12 @@ class AnalysisTensorWrapper:
 
     def get_layer(
             self
-    ) -> nn.Module:
+    ) -> torch.nn.Module:
         """
         Returns the layer of the tensor.
 
         Returns:
-            nn.Module:
+            torch.nn.Module:
                 The layer of the tensor.
         """
 
@@ -425,13 +422,13 @@ class AnalysisTensorWrapper:
 
     def set_path(
             self,
-            path: str
+            path: list
     ) -> None:
         """
         Sets the path of the tensor.
 
         Args:
-            path (str):
+            path (list):
                 The path of the tensor.
         """
 
@@ -453,13 +450,13 @@ class AnalysisTensorWrapper:
 
     def set_layer(
             self,
-            layer: nn.Module
+            layer: torch.nn.Module
     ) -> None:
         """
         Sets the layer of the tensor.
 
         Args:
-            layer (nn.Module):
+            layer (torch.nn.Module):
                 The layer of the tensor.
         """
 
@@ -597,16 +594,19 @@ class AnalysisTensorWrapper:
             )
         )
 
-
+# TODO implement a method to group the things
 class AnalysisTensorDict:
     """
     Dictionary of tensors for the analysis.
 
     Args:
         keys ([list[tuple[Any, ...]] | list[Any]], optional):
-            The keys of the tensors. Defaults to None.
+            The keys of the tensors. Defaults to ().
         tensors ([list[list[AnalysisTensorWrapper]] | list[AnalysisTensorWrapper]], optional):
-            The tensors to add to the dictionary.
+            The tensors to add to the dictionary. Defaults to ().
+        layer_paths_configurations_to_analyze (list[list[str]]):
+            List of configurations that contain the pointers to the tensors that will be analysed together. Defaults to
+            ().
         verbose (Verbose, optional):
             The verbosity level. Defaults to Verbose.INFO.
 
@@ -619,6 +619,8 @@ class AnalysisTensorDict:
     Attributes:
         tensors (dict):
             The dictionary of tensors.
+        layer_paths_configurations_to_analyze (list[list[str]]):
+            List of configurations that contain the pointers to the tensors that will be analysed together.
         verbose (Verbose):
             The verbosity level.
     """
@@ -627,6 +629,7 @@ class AnalysisTensorDict:
             self,
             keys: [list[tuple[Any, ...]] | list[Any]] = (),
             tensors: [list[list[AnalysisTensorWrapper]] | list[AnalysisTensorWrapper]] = (),
+            layer_paths_configurations_to_analyze: list[list[str]] = (),
             verbose: Verbose = Verbose.INFO
     ) -> None:
 
@@ -647,6 +650,7 @@ class AnalysisTensorDict:
                 keys[index],
                 tensors[index]
             )
+        self.layer_paths_configurations_to_analyze = layer_paths_configurations_to_analyze
 
         self.verbose = verbose
 
@@ -669,6 +673,9 @@ class AnalysisTensorDict:
                 The tensor.
         """
 
+        if isinstance(key, list):
+            key = tuple(key)
+
         if not isinstance(key, tuple):
             key = (key,)
 
@@ -689,6 +696,9 @@ class AnalysisTensorDict:
             list[AnalysisTensorWrapper]:
                 The list of tensors.
         """
+
+        if isinstance(key, list):
+            key = tuple(key)
 
         if not isinstance(key, tuple):
             key = (key,)
@@ -737,6 +747,75 @@ class AnalysisTensorDict:
 
         return unique_keys
 
+    def get_layer_paths_configurations_to_analyze(
+            self
+    ) -> list[Any]:
+        """
+        Returns the keys configuration to analyze.
+        """
+
+        return self.layer_paths_configurations_to_analyze
+
+    def remove_layer_paths_configuration_to_analyze(
+            self,
+            layer_paths_configurations: list[str] | list[list[str]]
+    ) -> None:
+        """
+        Removes one or more configurations from the list of configurations.
+
+        Args:
+            layer_paths_configurations (list[str] | list[list[str]]):
+                The configuration or configurations to remove.
+        """
+
+        if len(layer_paths_configurations) <= 0:
+            raise ValueError("The configuration must contain at least one element.")
+
+        if isinstance(layer_paths_configurations[0], list):
+            for configuration in layer_paths_configurations:
+                if configuration in self.layer_paths_configurations_to_analyze:
+                    self.layer_paths_configurations_to_analyze.remove(configuration)
+        elif isinstance(layer_paths_configurations[0], str):
+            if layer_paths_configurations in self.layer_paths_configurations_to_analyze:
+                self.layer_paths_configurations_to_analyze.remove(layer_paths_configurations)
+        else:
+            raise ValueError("A configuration must be list of strings.\n"
+                             "A list of strings or a list of list of strings is expected.")
+
+    def get_wrappers_for_analysis(
+            self,
+            target_paths_configuration_to_analyze: list[list[list[str]]]
+    ) -> list[list[AnalysisTensorWrapper]]:
+        """
+        Returns the wrappers for the analysis.
+
+        Args:
+            target_paths_configuration_to_analyze (list[list[list[str]]]):
+                The key configuration to analyze.
+
+        Returns:
+            list[list[AnalysisTensorWrapper]]:
+                The wrappers for the analysis.
+        """
+
+        structured_wrappers_to_analyze = []
+        for target_paths_configuration_section in target_paths_configuration_to_analyze:
+            wrappers_configuration_section = []
+            for target_layer_path in target_paths_configuration_section:
+                layer_key = [key for key in self.get_keys() if is_subsequence(target_layer_path, key)]
+                if len(layer_key) == 0:
+                    raise ValueError(f"No tensor found for the target layer path {target_layer_path}.")
+                if len(layer_key) > 1:
+                    raise ValueError(f"More than one tensor found for the target layer path {target_layer_path}.")
+                layer_wrappers = self.get_tensor_list(layer_key[0])
+                if len(layer_wrappers) > 0:
+                    for layer_wrapper in layer_wrappers:
+                        wrappers_configuration_section.append(layer_wrapper)
+
+            structured_wrappers_to_analyze.append(wrappers_configuration_section)
+
+        return structured_wrappers_to_analyze
+
     def set_tensor(
             self,
             key: [tuple[Any, ...] | Any],
@@ -755,6 +834,9 @@ class AnalysisTensorDict:
             ValueError:
                 If the key is not a tuple.
         """
+
+        if isinstance(key, list):
+            key = tuple(key)
 
         if not isinstance(key, tuple):
             key = (key,)
@@ -779,6 +861,9 @@ class AnalysisTensorDict:
                 The tensor or list of tensors to append.
         """
 
+        if isinstance(key, list):
+            key = tuple(key)
+
         if not isinstance(key, tuple):
             key = (key,)
 
@@ -789,6 +874,20 @@ class AnalysisTensorDict:
                 self.tensors[key] = self.tensors[key] + [tensor]
         else:
             self.set_tensor(key, tensor)
+
+    def set_layer_paths_configurations_to_analyze(
+            self,
+            layer_paths_configurations_to_analyze: list[Any]
+    ) -> None:
+        """
+        Sets the keys configuration to analyze.
+
+        Args:
+            layer_paths_configurations_to_analyze (list[Any]):
+                The keys configuration to analyze.
+        """
+
+        self.layer_paths_configurations_to_analyze = layer_paths_configurations_to_analyze
 
     def set_dtype(
             self,
@@ -852,18 +951,18 @@ class AnalysisTensorDict:
         return filtered_tensors
 
 
-class AnalysisLayerWrapper(nn.Module):
+class AnalysisLayerWrapper(torch.nn.Module):
     """
     Wrapper for the analysis of a layer.
 
     Args:
-        layer (nn.Module):
+        layer (torch.nn.Module):
             The layer.
         label (str, optional):
             The label of the layer. Defaults to None.
 
     Attributes:
-        layer (nn.Module):
+        layer (torch.nn.Module):
             The layer.
         label (str):
             The label of the layer.
@@ -873,7 +972,7 @@ class AnalysisLayerWrapper(nn.Module):
 
     def __init__(
             self,
-            layer: nn.Module,
+            layer: torch.nn.Module,
             label: str = None,
             store_activations: bool = False,
             *args,
@@ -893,12 +992,12 @@ class AnalysisLayerWrapper(nn.Module):
 
     def get_layer(
             self
-    ) -> nn.Module:
+    ) -> torch.nn.Module:
         """
         Returns the layer.
 
         Returns:
-            nn.Module:
+            torch.nn.Module:
                 The layer.
         """
 
@@ -1076,12 +1175,12 @@ class AnalysisLayerWrapper(nn.Module):
         return output
 
 
-class AnalysisModelWrapper(nn.Module):
+class AnalysisModelWrapper(torch.nn.Module):
     """
     Wrapper for the analysis of a model.
 
     Args:
-        model (nn.Module):
+        model (torch.nn.Module):
             The model.
         *args:
             Additional positional arguments.
@@ -1089,13 +1188,13 @@ class AnalysisModelWrapper(nn.Module):
             Additional keyword arguments.
 
     Attributes:
-        model (nn.Module):
+        model (torch.nn.Module):
             The model.
     """
 
     def __init__(
             self,
-            model: [nn.Module | transformers.AutoModel | transformers.PreTrainedModel],
+            model: [torch.nn.Module | transformers.AutoModel | transformers.PreTrainedModel],
             targets: list,
             black_list: list = None,
             store_activations: bool = True,
@@ -1116,7 +1215,7 @@ class AnalysisModelWrapper(nn.Module):
 
     def wrap_model(
             self,
-            module_tree: nn.Module,
+            module_tree: torch.nn.Module,
             paths_of_targets: list,
             black_list: list = None,
             path: str = "",
@@ -1127,7 +1226,7 @@ class AnalysisModelWrapper(nn.Module):
         Converts layers into global-dependent versions.
 
         Args:
-            module_tree (nn.Module):
+            module_tree (torch.nn.Module):
                 Model or module containing layers.
             paths_of_targets (list):
                 List of paths of the targets.
@@ -1237,7 +1336,7 @@ class AnalysisModelWrapper(nn.Module):
         Feeds the input activation to the wrapped layers of the model.
 
         Args:
-            module_tree (nn.Module):
+            module_tree (torch.nn.Module):
                 Model or module containing layers.
             activations (torch.Tensor):
                 The input activation.
@@ -1270,14 +1369,14 @@ class AnalysisModelWrapper(nn.Module):
 
     def _set_store_activations(
             self,
-            module_tree: nn.Module,
+            module_tree: torch.nn.Module,
             store_activations: bool
     ) -> None:
         """
         Sets whether to store the activations.
 
         Args:
-            module_tree (nn.Module):
+            module_tree (torch.nn.Module):
                 Model or module containing layers.
             store_activations (bool):
                 Whether to store the activations.
@@ -1305,7 +1404,7 @@ class AnalysisModelWrapper(nn.Module):
 
     def _get_activations(
             self,
-            module_tree: nn.Module
+            module_tree: torch.nn.Module
     ) -> dict:
         """
         Returns the activations.
@@ -1344,13 +1443,13 @@ class AnalysisModelWrapper(nn.Module):
 
     def _reset_activations(
             self,
-            module_tree: nn.Module
+            module_tree: torch.nn.Module
     ) -> None:
         """
         Resets the activations.
 
         Args:
-            module_tree (nn.Module):
+            module_tree (torch.nn.Module):
                 Model or module containing layers.
         """
 
@@ -1362,55 +1461,6 @@ class AnalysisModelWrapper(nn.Module):
                 pass
             else:
                 self._reset_activations(child)
-
-
-# Definition of the function to perform various types of analysis
-
-def perform_analysis(
-        configuration: Config
-) -> None:
-    """
-    Performs the analysis.
-
-    Args:
-        configuration (Config):
-            The configuration object containing the necessary information to perform the analysis.
-
-    """
-
-    # Getting the parameters related to the paths from the configuration
-    file_available = configuration.get("file_available")
-    file_path = configuration.get("file_path")
-    directory_path = configuration.get("directory_path")
-    file_name_no_format = configuration.get("file_name_no_format")
-
-    if file_available:
-        print(f"The file '{file_path}' is available.")
-        # Loading the data from the file
-        with open(file_path, "rb") as f:
-            data = pkl.load(f)
-    else:
-        # Loading the model
-        model = load_model_for_causal_lm(configuration)
-        # Extracting the tensors to be analyzed
-        extracted_tensors = []
-        extract_based_on_path(
-            model,
-            configuration.get("targets"),
-            extracted_tensors,
-            configuration.get("black_list"),
-            verbose=configuration.get_verbose()
-        )
-
-        data = []
-
-        # Saving the data about the analysis to the file
-        with open(file_path, "wb") as f:
-            pkl.dump(data, f)
-
-    # Saving the data about the analysis to the file
-    with open(file_path, "wb") as f:
-        pkl.dump(data, f)
 
 
 # Definition of the functions to compute the rank of a matrix
@@ -1493,7 +1543,7 @@ def compute_max_possible_rank(
 # Definition of the functions to extract the matrices from the model tree
 
 def extract(
-        model_tree: nn.Module,
+        model_tree: torch.nn.Module,
         names_of_targets: list,
         extracted_matrices: list,
         path: list = [],
@@ -1504,7 +1554,7 @@ def extract(
     Extracts the matrices from the model tree.
 
     Args:
-        model_tree (nn.Module):
+        model_tree (torch.nn.Module):
             The model tree.
         names_of_targets (list):
             The names of the targets.
@@ -1545,11 +1595,11 @@ def extract(
 
 
 def extract_based_on_path(
-        model_tree: [nn.Module | transformers.AutoModel],
-        paths_of_targets: list,
-        extracted_matrices: list,
-        black_list: list = None,
-        path: str = "",
+        module_tree: [torch.nn.Module | transformers.AutoModel],
+        target_paths: list,
+        layers_storage: AnalysisTensorDict,
+        blacklist: list = (),
+        path: list = None,
         verbose: Verbose = Verbose.INFO,
         **kwargs
 ) -> None:
@@ -1557,55 +1607,52 @@ def extract_based_on_path(
     Extracts the matrices from the model tree.
 
     Args:
-        model_tree ([nn.Module | transformers.AutoModel]):
+        module_tree ([torch.nn.Module | transformers.AutoModel]):
             The model tree.
-        paths_of_targets (list):
+        target_paths (list):
             The path of the targets.
-        extracted_matrices (list):
-            The list of extracted matrices.
-        black_list (list, optional):
-            The list of black listed paths. Defaults to None.
-        path (str, optional):
-            The path to the current layer. Defaults to "".
+        layers_storage (AnalysisTensorDict):
+            Storage where the extracted layers will be at the end of the extraction.
+        blacklist (list, optional):
+            The list of blacklisted paths. Defaults to ().
+        path (list, optional):
+            The path to the current layer. Defaults to None.
         verbose (Verbose, optional):
             The verbosity level. Defaults to Verbose.INFO.
     """
 
-    for layer_name in model_tree._modules.keys():
-        child = model_tree._modules[layer_name]
+    for layer_name in module_tree._modules.keys():
+        # Extracting the child from the current module
+        child = module_tree._modules[layer_name]
+        layer_path = copy.deepcopy(path) + [f"{layer_name}"] if path is not None else [f"{layer_name}"]
+
         if len(child._modules) == 0:
-            if verbose > Verbose.INFO:
-                print(f"Checking {layer_name} in {path}")
+            verbose.print(f"Checking {layer_name} in {path}", Verbose.INFO)
+            target_paths_in_current_path = [
+                is_subsequence(
+                    [sub_path for sub_path in target_path if sub_path != "block_index"],
+                    layer_path
+                ) and not any(blacklisted_string in layer_path for blacklisted_string in blacklist)
+                for target_path in target_paths]
+            if sum(target_paths_in_current_path) > 1:
+                raise Exception(f"The layer {layer_path} corresponds to multiple targets.")
+            if any(target_paths_in_current_path):
+                verbose.print(f"Found {layer_name} in {layer_path}", Verbose.INFO)
 
-            if black_list is not None:
-                black_listed = len([
-                    black_listed_string
-                    for black_listed_string in black_list
-                    if black_listed_string in path + "_" + layer_name
-                ]) > 0
-            else:
-                black_listed = False
-
-            targets_in_path = [
-                layer_path_
-                for layer_path_ in paths_of_targets
-                if layer_path_ in path + "_" + layer_name and not black_listed
-            ]
-            if len(targets_in_path) > 0:
-                layer_path = str(max(targets_in_path, key=len))
-                if verbose > Verbose.SILENT:
-                    print(f"Found {layer_path} in {path}")
-
-                list_containing_layer_number = [
-                    sub_path for sub_path in path.split("_") if sub_path.isdigit()
-                ]
+                # Computing the index block of the layer
+                list_containing_layer_number = [el for el in layer_path if el.isdigit()]
+                if len(list_containing_layer_number) > 1:
+                    raise Exception(f"Multiple candidates as block index found. The path is ambiguous")
                 block_index = list_containing_layer_number[0] if len(list_containing_layer_number) > 0 else "-1"
-                extracted_matrices.append(
+
+                # Storing the layer in the dictionary of extracted layers
+                layers_storage.append_tensor(
+                    layer_path,
                     AnalysisTensorWrapper(
                         tensor=child.weight.detach(),
                         name=layer_name,
-                        label=layer_path,
-                        path=path + "_" + layer_name,
+                        label="_".join(layer_path),
+                        path=layer_path,
                         block_index=int(block_index),
                         layer=child
                     )
@@ -1613,18 +1660,17 @@ def extract_based_on_path(
         else:
             # Recursively calling the function
             extract_based_on_path(
-                model_tree=child,
-                paths_of_targets=paths_of_targets,
-                extracted_matrices=extracted_matrices,
-                black_list=black_list,
-                path=layer_name if path == "" else path + "_" + layer_name,
+                module_tree=child,
+                target_paths=target_paths,
+                layers_storage=layers_storage,
+                blacklist=blacklist,
+                path=layer_path,
                 verbose=verbose,
                 **kwargs
             )
 
-
 def extract_analysis_layer_wrappers(
-        module_tree: [nn.Module | transformers.AutoModel],
+        module_tree: [torch.nn.Module | transformers.AutoModel],
         paths_of_targets: list,
         extracted_matrices: list,
         black_list: list = None,
@@ -1636,7 +1682,7 @@ def extract_analysis_layer_wrappers(
     Extracts the matrices from the model tree.
 
     Args:
-        module_tree ([nn.Module | transformers.AutoModel]):
+        module_tree ([torch.nn.Module | transformers.AutoModel]):
             The model tree.
         paths_of_targets (list):
             The path of the targets.
