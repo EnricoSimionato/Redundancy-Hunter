@@ -92,9 +92,9 @@ class LayerReplacementAnalysis(AnalysisExperiment):
             logging.info("Evaluating the original model")
             print("Evaluating the original model")
             if ("original", "original") not in performance_dict[benchmark_id].keys():
-                #original_model_results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id,
-                #                                      evaluation_args[benchmark_id], device)
-                original_model_results = {benchmark_id: {"acc_norm,none": 0.7}} # Testing
+                original_model_results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id,
+                                                      evaluation_args[benchmark_id], device)
+                #original_model_results = {benchmark_id: {"acc_norm,none": 0.7}} # Testing
                 performance_dict[benchmark_id][("original", "original")] = original_model_results
                 self.log(f"Results of the original model: {original_model_results}")
                 print(f"Results of the original model: {original_model_results}")
@@ -115,9 +115,9 @@ class LayerReplacementAnalysis(AnalysisExperiment):
 
                 # Evaluating the model
                 self.log(f"Starting the evaluation of the model on the device {model_wrapper.get_model().device}.")
-                #results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id,
-                #                                      benchmark_evaluation_args, device)
-                results = {benchmark_id: {"acc_norm,none": 0.5}} # Testing
+                results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id,
+                                                      benchmark_evaluation_args, device)
+                #results = {benchmark_id: {"acc_norm,none": 0.5}} # Testing
                 self.log(f"Results: {results}")
                 gc.collect()
 
