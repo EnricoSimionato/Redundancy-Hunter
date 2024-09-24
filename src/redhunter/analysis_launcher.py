@@ -12,9 +12,9 @@ from redhunter.analysis.layer_replacement_analysis import (
     AllLayersReplacementAnalysis
 
 )
-from redhunter.analysis.sorted_layers_compression_analysis import (
-    NormSortedLayersCompressionAnalysisWithConcatenatedMatrices
-)
+#from redhunter.analysis.sorted_layers_compression_analysis import (
+#    NormSortedLayersCompressionAnalysisWithConcatenatedMatrices
+#)
 
 
 GeneralPurposeExperimentFactory.register({
@@ -26,7 +26,7 @@ GeneralPurposeExperimentFactory.register({
     "same_layer_couples_replacement_redundancy_analysis": SameLayerCouplesReplacementAnalysis,
     "all_layers_replacement_redundancy_analysis": AllLayersReplacementAnalysis,
 
-    "norm_sorted_layers_compression_analysis": NormSortedLayersCompressionAnalysisWithConcatenatedMatrices
+#    "norm_sorted_layers_compression_analysis": NormSortedLayersCompressionAnalysisWithConcatenatedMatrices
 })
 
 
