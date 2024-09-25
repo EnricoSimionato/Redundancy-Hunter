@@ -99,6 +99,9 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
 
             # Storing the data
             self.set_data((original_tensor_wrappers, sorted_layers_deltas, objective_function_stats_dict))
+            print(original_tensor_wrappers)
+            print(sorted_layers_deltas)
+            print(objective_function_stats_dict)
             self.store_data()
 
         # Iterating over the remaining configurations that have to be analyzed
