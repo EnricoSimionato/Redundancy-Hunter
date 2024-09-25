@@ -15,6 +15,7 @@ seed: 42
 ########################################     Model configuration parameters     ########################################
 model_id: "mistralai/Mistral-7B-v0.3"
 #quantization: 4bit
+dtype: "float16"
 
 ########################################   Tokenizer configuration parameters   ########################################
 tokenizer_id: "mistralai/Mistral-7B-v0.3"
