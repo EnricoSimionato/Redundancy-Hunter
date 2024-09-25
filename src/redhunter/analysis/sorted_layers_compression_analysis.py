@@ -98,17 +98,9 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
             original_tensor_wrappers.set_layer_paths_configurations_to_analyze(self.get_experiments_configurations())
 
             # Storing the data
-            self.set_data((original_tensor_wrappers, sorted_layers_deltas, objective_function_stats_dict))
-            import pickle as pkl
-            with open(os.path.join(self.config.get("directory_path"), "c.pkl"), "wb") as f:
-                pkl.dump(objective_function_stats_dict, f)
-            with open(os.path.join(self.config.get("directory_path"), "b.pkl"), "wb") as f:
-                pkl.dump(sorted_layers_deltas, f)
-            with open(os.path.join(self.config.get("directory_path"), "a.pkl"), "wb") as f:
-                pkl.dump(original_tensor_wrappers, f)
-
-
-            self.store_data()
+            #self.set_data((original_tensor_wrappers, sorted_layers_deltas, objective_function_stats_dict))
+            print(original_tensor_wrappers)
+            #self.store_data()
 
         # Iterating over the remaining configurations that have to be analyzed
         remaining_configurations_to_analyze = original_tensor_wrappers.get_layer_paths_configurations_to_analyze()
@@ -148,7 +140,7 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
             objective_function_stats_dict[key] = objective_function_stats
 
             # Storing the data
-            self.set_data((original_tensor_wrappers, sorted_layers_deltas, objective_function_stats_dict))
+            #self.set_data((original_tensor_wrappers, sorted_layers_deltas, objective_function_stats_dict))
             configurations_to_remove.append(configuration_to_analyze)
             if (configurations_index + 1) % store_interval == 0:
                 #self.store_data()
@@ -159,7 +151,8 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
             gc.collect()
 
         # Storing the data
-        self.set_data((original_tensor_wrappers, sorted_layers_deltas, objective_function_stats_dict))
+        #self.set_data((original_tensor_wrappers, sorted_layers_deltas, objective_function_stats_dict))
+        self.set_data((None, None, objective_function_stats_dict))
         self.store_data()
         original_tensor_wrappers.remove_layer_paths_configuration_to_analyze(configurations_to_remove)
         self.log("All configurations analyzed and all data stored.")
