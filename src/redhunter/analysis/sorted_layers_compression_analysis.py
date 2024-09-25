@@ -107,32 +107,35 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
         configurations_to_remove = []
         gc.collect()
         for configurations_index, configuration_to_analyze in enumerate(remaining_configurations_to_analyze):
-            self.log(f"Analyzing the layers with the configurations: {configuration_to_analyze}")
-            print(f"Analyzing the layers with the configurations: {configuration_to_analyze}")
+            self.log(f"Analyzing the configuration: {configuration_to_analyze}")
+            print(f"Analyzing the configuration: {configuration_to_analyze}")
             # Getting the layers to analyze
             layer_wrappers_to_analyze = original_tensor_wrappers.get_wrappers_for_analysis(configuration_to_analyze)
             layers_in_block_1 = layer_wrappers_to_analyze[0]
             layers_in_block_2 = layer_wrappers_to_analyze[1]
 
             # Sorting the rows/columns of a layer based minimizing a certain metrics given a couple of transformer blocks
-            #sorting_axes = [1 if index == len(layers_in_block_2) - 1 else 0 for index in range(len(layers_in_block_2))]
-            #sorting_indices, objective_function_stats = self.compute_indices_sorting(layers_in_block_1, layers_in_block_2, sorting_axes)
+            sorting_axes = [1 if index == len(layers_in_block_2) - 1 else 0 for index in range(len(layers_in_block_2))]
+            sorting_indices, objective_function_stats = self.compute_indices_sorting(layers_in_block_1, layers_in_block_2, sorting_axes)
+            self.log(f"Sorting indices computed.")
+            self.log(f"Sorting indices: {sorting_indices}")
+            self.log(f"Objective function stats: {objective_function_stats}")
 
             # Using the ordering to sort the vectors in the matrices of block 2
-            #sorted_layers_in_block_2 = self.sort_elements_in_layers(layers_in_block_2, sorting_indices, sorting_axes)
+            sorted_layers_in_block_2 = self.sort_elements_in_layers(layers_in_block_2, sorting_indices, sorting_axes)
+            self.log(f"Layers sorted.")
 
             # Subtracting the layers of block and the sorted layers of another block
-            #delta_matrices = compute_delta_matrices(layers_in_block_1, sorted_layers_in_block_2)
+            delta_matrices = compute_delta_matrices(layers_in_block_1, sorted_layers_in_block_2)
 
             # Processing the delta matrices of the layers based on the specific operations that the analysis performs
-            #for delta_matrix in delta_matrices:
-            #    self.process_tensor_wrappers(delta_matrix)
-            objective_function_stats = {
-                "final_sorting_resettable_elements": 42,
-                "initial_sorting_resettable_elements": 2018
-            }
+            for delta_matrix in delta_matrices:
+                self.process_tensor_wrappers(delta_matrix)
+            # objective_function_stats = {"final_sorting_resettable_elements": 42, "initial_sorting_resettable_elements": 2018} # TESTING
+            self.log("Delta matrices computed and processed.")
+
             key = (tuple(tuple(layer.get_path()) for layer in layers_in_block_1), tuple(tuple(layer.get_path()) for layer in layers_in_block_2))
-            #sorted_layers_deltas.set_tensor(key, delta_matrices)
+            sorted_layers_deltas.set_tensor(key, delta_matrices)
             objective_function_stats_dict[key] = objective_function_stats
 
             # Storing the data
@@ -150,6 +153,7 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
         self.set_data((original_tensor_wrappers, sorted_layers_deltas, objective_function_stats_dict))
         self.store_data()
         original_tensor_wrappers.remove_layer_paths_configuration_to_analyze(configurations_to_remove)
+        self.log("All configurations analyzed and all data stored.")
 
     def get_experiments_configurations(
             self
@@ -321,11 +325,11 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
         else:
             plot_heatmap_with_additional_row_column(
                 statistics_delta_layers,
-                statistics_original_layers, statistics_original_layers,
-                os.path.join(config.get("directory_path"), "heatmap.png"),
-                self.title + f"(Model: {config.get("model_id")})", self.axis_titles,
-                [self.x_title,], [self.y_title,],
-                row_labels, column_labels,
+                values_rows_lists=statistics_original_layers, values_columns_lists=statistics_original_layers,
+                save_path=os.path.join(config.get("directory_path"), "heatmap.png"),
+                title=self.title + f"(Model: {config.get("model_id")})", axis_titles=self.axis_titles,
+                x_title=self.x_title, y_title=self.y_title,
+                x_labels=column_labels, y_labels=row_labels,
                 fig_size=config.get("figure_size") if config.contains("figure_size") else (30, 30)
             )
 
@@ -333,7 +337,7 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
             self,
             config: Config,
             data: Any
-    ) -> list[list[list[np.ndarray | torch.Tensor]], list[list[np.ndarray | torch.Tensor]], list[list[str]], list[list[str]]]:
+    ) -> tuple[list[list[np.ndarray | torch.Tensor]], list[list[np.ndarray | torch.Tensor]], list[list[str]], list[list[str]]]:
         """
         Returns the formatted results to plot.
 
@@ -361,7 +365,7 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
             self,
             config: Config,
             data: Any
-    ) -> list[list[list[np.ndarray | torch.Tensor]], list[list[np.ndarray | torch.Tensor]], list[list[str]], list[list[str]]]:
+    ) -> tuple[list[list[np.ndarray | torch.Tensor]], list[list[np.ndarray | torch.Tensor]], list[list[str]], list[list[str]]]:
         """
         Returns the formatted results to plot.
 
@@ -386,6 +390,11 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
 
 
 class ResettableElementsSortedLayersCompressionAnalysisWithConcatenatedMatrices(SortedLayersCompressionAnalysis):
+    """
+    Class to perform the analysis of the sorted layers.
+    The sorting is based on the number of resettable elements in the difference between the layers.
+    """
+
     mandatory_keys = ["zero_threshold"]
 
     def __init__(
@@ -458,9 +467,14 @@ class ResettableElementsSortedLayersCompressionAnalysisWithConcatenatedMatrices(
              for layer, axis in zip(layers_in_block_2, axes)],
             dim=0
         ).to(device)
+        if concatenated_matrix_1.shape[0] != concatenated_matrix_2.shape[0]:
+            raise ValueError("The dimension of the concatenated matrices where the subtraction is computed must be the same.")
         if concatenated_matrix_1.shape != concatenated_matrix_2.shape:
-            raise ValueError("The shapes of the concatenated matrices must be the same.")
-        concatenated_dim, dim_to_sort = concatenated_matrix_1.shape
+            self.log("The shapes of the concatenated matrices are different.")
+            print("The shapes of the concatenated matrices are different.")
+
+        concatenated_dim_1, dim_to_sort_1 = concatenated_matrix_1.shape
+        concatenated_dim_2, dim_to_sort_2 = concatenated_matrix_2.shape
 
         sorting_stats = {
             "initial_sorting_resettable_elements": torch.sum(torch.abs(concatenated_matrix_1 - concatenated_matrix_2) < zero_threshold).item(),
@@ -473,10 +487,10 @@ class ResettableElementsSortedLayersCompressionAnalysisWithConcatenatedMatrices(
         print("Counting the number of smaller-than-threshold entries for each couple of stacked internal vectors of "
               "the layers.")
 
-        count_matrix = torch.zeros((dim_to_sort, dim_to_sort), device=concatenated_matrix_1.device)
+        count_matrix = torch.zeros((dim_to_sort_1, dim_to_sort_2), device=concatenated_matrix_1.device)
         # Iterating over batches to optimize the computation of the value of the objective function
-        for start in tqdm(range(0, dim_to_sort, batch_size)):
-            end = min(start + batch_size, dim_to_sort)
+        for start in tqdm(range(0, dim_to_sort_1, batch_size)):
+            end = min(start + batch_size, dim_to_sort_1)
 
             # Expanding the dimensions for broadcasting and computing the difference between the two matrices
             diff =  concatenated_matrix_1[:, start:end].unsqueeze(2) - concatenated_matrix_2.unsqueeze(1)
@@ -486,11 +500,11 @@ class ResettableElementsSortedLayersCompressionAnalysisWithConcatenatedMatrices(
 
         # Greedily associating columns
         sorting_indices = []
-        used_indices = torch.zeros(dim_to_sort, dtype=torch.bool)
+        used_indices = torch.zeros(dim_to_sort_2, dtype=torch.bool)
 
-        for count_row in tqdm(count_matrix.transpose(0, 1)):
+        for count_row in tqdm(count_matrix):
             # Getting the indices that have not been used yet
-            available_indices = torch.arange(dim_to_sort)[~used_indices]
+            available_indices = torch.arange(dim_to_sort_2)[~used_indices]
             # Getting the index of the column with the maximum number of resettable elements
             max_index = available_indices[torch.argmax(count_row[available_indices])]
             sorting_indices.append(max_index.item())
@@ -511,8 +525,7 @@ class ResettableElementsSortedLayersCompressionAnalysisWithConcatenatedMatrices(
             self,
             config: Config,
             data: Any
-    ) -> tuple[
-        list[list[np.ndarray | torch.Tensor]], list[list[np.ndarray | torch.Tensor]], list[list[str]], list[list[str]]]:
+    ) -> tuple[list[list[np.ndarray | torch.Tensor]], list[list[np.ndarray | torch.Tensor]], list[list[str]], list[list[str]]]:
         """
         Returns the formatted results to plot.
 
@@ -534,40 +547,38 @@ class ResettableElementsSortedLayersCompressionAnalysisWithConcatenatedMatrices(
         """
 
         # Helper function to extract all numerical sequences from tuple keys
-        def extract_numerical_sequence(key):
+        def extract_numerical_sequence(path_key):
             # Helper function to extract numbers from a single sublist
             def extract_numbers(sublist):
                 return [int(s) for s in sublist if s.isdigit()]
 
-            # Extract numbers from all parts of the tuple key (both parts)
-            seq1 = tuple(extract_numbers(sublist) for sublist in key[0])
-            seq2 = tuple(extract_numbers(sublist) for sublist in key[1])
+            # Extracting numbers from all parts of the first tuple element
+            seq = tuple(extract_numbers(sublist) for sublist in path_key)
 
-            # Flatten nested tuples and return as one single tuple
-            flat_seq1 = tuple(num for sublist in seq1 for num in sublist)
-            flat_seq2 = tuple(num for sublist in seq2 for num in sublist)
+            # Flattening nested tuples and return as one single tuple
+            flat_seq = tuple(num for sublist in seq for num in sublist)
 
-            return flat_seq1, flat_seq2
+            return flat_seq
 
         _, _, results_dict = data
 
         row_elements = set()
         column_elements = set()
 
-        # Collect row and column elements
+        # Collecting row and column elements
         for key in results_dict.keys():
             row_elements.add(key[0])
             column_elements.add(key[1])
 
-        # Convert sets to sorted lists using the custom numeric sequence extraction and sorting
-        first_elements = sorted(row_elements, key=lambda elem: extract_numerical_sequence((elem, elem)))
-        second_elements = sorted(column_elements, key=lambda elem: extract_numerical_sequence((elem, elem)))
+        # Converting sets to sorted lists using the custom numeric sequence extraction and sorting
+        first_elements = sorted(row_elements, key=lambda elem: extract_numerical_sequence(elem))
+        second_elements = sorted(column_elements, key=lambda elem: extract_numerical_sequence(elem))
 
         # Creating matrices to be plotted
         final_sorting_matrix = np.zeros((len(first_elements), len(second_elements)))
         initial_sorting_matrix = np.zeros((len(first_elements), len(second_elements)))
 
-        # Fill matrices with values from the dictionary
+        # Filling matrices with values from the dictionary
         for key, value in results_dict.items():
             first_index = first_elements.index(key[0])
             second_index = second_elements.index(key[1])
@@ -580,6 +591,11 @@ class ResettableElementsSortedLayersCompressionAnalysisWithConcatenatedMatrices(
 
 
 class SimilarityBasedSortedLayersCompressionAnalysis(SortedLayersCompressionAnalysis):
+    """
+    Class to perform the analysis of the sorted layers.
+    The sorting is based on the similarity between the layers.
+    """
+
     mandatory_keys = ["similarity_guide_index", "singular_values_threshold"]
 
     def __init__(
@@ -628,30 +644,6 @@ class SimilarityBasedSortedLayersCompressionAnalysis(SortedLayersCompressionAnal
             axes (list[int]):
                 The list of axes where the components have to be sorted.
         """
-
-        if len(layers_in_block_1) != len(layers_in_block_2):
-            raise ValueError("The number of layers in block 1 and block 2 must be the same.")
-        if len(axes) != len(layers_in_block_1) or len(axes) != len(layers_in_block_2):
-            raise ValueError(f"The length of the axes list must be the same as the length of the layers list.\n"
-                             f"The length of the axes list is {len(axes)}; the length of the layers in block 1 is "
-                             f"{len(layers_in_block_1)}; the length of the layers in block 2 is {len(layers_in_block_2)}.")
-        if not all(axis == 0 or axis == 1 for axis in axes):
-            raise ValueError("The axes must be 0 or 1.")
-
-        zero_threshold = self.config.get("zero_threshold")
-
-        concatenated_matrix_1 = torch.cat(
-            [layer.get_tensor() if axis == 0
-             else layer.get_tensor().transpose()
-             for layer, axis in zip(layers_in_block_1, axes)],
-            dim=0
-        )
-        concatenated_matrix_2 = torch.cat(
-            [layer.get_tensor() if axis == 0
-             else layer.get_tensor().transpose()
-             for layer, axis in zip(layers_in_block_1, axes)],
-            dim=0
-        )
 
         return [], {}
 
