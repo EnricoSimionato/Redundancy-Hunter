@@ -26,7 +26,9 @@ fi
 DOCKER_USERNAME=$1
 DOCKER_PASSWORD=$2
 IMAGE_NAME="redhunter"
-CONTAINER_NAME="redhunter"
+
+# Generate a unique container name with timestamp
+CONTAINER_NAME="redhunter_$(date +%s)"
 
 # Logging in to Docker
 echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
@@ -72,5 +74,5 @@ if [ -n "$EXISTING_CONTAINER" ]; then
     fi
 else
     echo "No existing container found. Creating and running a new one."
-    docker run --name $CONTAINER_NAME -v $(pwd)/src/experiments:/Redundancy-Hunter/src/experiments --gpus all -m 32g $IMAGE_NAME || { echo "Failed to run container with image $IMAGE_NAME"; exit 1; }
+    docker run --name $CONTAINER_NAME -v $(pwd)/src/experiments:/Redundancy-Hunter/src/experiments -v $(pwd)/src/experiments/models:/Redundancy-Hunter/src/experiments/models --gpus all -m 32g $IMAGE_NAME || { echo "Failed to run container with image $IMAGE_NAME"; exit 1; }
 fi
