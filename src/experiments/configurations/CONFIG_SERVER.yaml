@@ -1,7 +1,7 @@
 ########################################    General configuration parameters    ########################################
 path_to_storage: "src/experiments/results"
 
-experiment_type: "specific_replaced_layer_replacement_redundancy_analysis"
+experiment_type: "previous_layer_replacement_redundancy_analysis"
 
 version: "0"
 
@@ -45,4 +45,6 @@ evaluation_args:
 replaced_block_index: 25
 
 ########################################         Sorted layers analysis         ########################################
-
+zero_threshold: 0.001
+batch_size: 2
+store_interval: 24
