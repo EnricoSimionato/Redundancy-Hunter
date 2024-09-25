@@ -99,9 +99,13 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
 
             # Storing the data
             self.set_data((original_tensor_wrappers, sorted_layers_deltas, objective_function_stats_dict))
-            print(original_tensor_wrappers)
-            print(sorted_layers_deltas)
-            print(objective_function_stats_dict)
+            import pickle as pkl
+            with open(os.path.join(self.config.get("directory_path"), "a.pkl"), "wb") as f:
+                pkl.dump(original_tensor_wrappers, f)
+            with open(os.path.join(self.config.get("directory_path"), "b.pkl"), "wb") as f:
+                pkl.dump(sorted_layers_deltas, f)
+            with open(os.path.join(self.config.get("directory_path"), "c.pkl"), "wb") as f:
+                pkl.dump(objective_function_stats_dict, f)
             self.store_data()
 
         # Iterating over the remaining configurations that have to be analyzed
