@@ -4,6 +4,7 @@ from exporch import GeneralPurposeExperimentFactory
 
 from redhunter.analysis.layer_replacement_analysis import (
     AllLayerCouplesReplacementAnalysis,
+    SpecificDisplacementLayerReplacementAnalysis,
     SubsequentLayerReplacementAnalysis,
     PreviousLayerReplacementAnalysis,
     SpecificReplacedLayerReplacementAnalysis,
@@ -19,6 +20,7 @@ from redhunter.analysis.sorted_layers_compression_analysis import (
 
 GeneralPurposeExperimentFactory.register({
     "all_layer_couples_replacement_redundancy_analysis": AllLayerCouplesReplacementAnalysis,
+    "specific_displacement_layer_replacement_redundancy_analysis": SpecificDisplacementLayerReplacementAnalysis,
     "subsequent_layer_replacement_redundancy_analysis": SubsequentLayerReplacementAnalysis,
     "previous_layer_replacement_redundancy_analysis": PreviousLayerReplacementAnalysis,
     "specific_replaced_layer_replacement_redundancy_analysis": SpecificReplacedLayerReplacementAnalysis,

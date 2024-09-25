@@ -260,7 +260,8 @@ class LayerReplacementAnalysis(AnalysisExperiment):
                 y_labels=[overwritten_layers_labels_row_list[benchmark_id]],
                 fig_size=fig_size,
                 edge_color="white",
-                precision=4
+                fontsize=22,
+                precision=3
             )
             plot_heatmap(
                 [[(post_processed_results_list[benchmark_id] >= post_processed_results_list[benchmark_id][0, 0]) *
@@ -274,7 +275,8 @@ class LayerReplacementAnalysis(AnalysisExperiment):
                 y_labels=[overwritten_layers_labels_row_list[benchmark_id]],
                 fig_size=fig_size,
                 edge_color="white",
-                precision=4
+                fontsize=22,
+                precision=3
             )
 
     def _format_result_dictionary_to_plot(
@@ -456,7 +458,8 @@ class AllLayerCouplesReplacementAnalysis(LayerReplacementAnalysis):
         self.log("The results have been post-processed and stored.")
 
 
-class SameLayerCouplesReplacementAnalysis(LayerReplacementAnalysis):
+class SpecificDisplacementLayerReplacementAnalysis(AllLayerCouplesReplacementAnalysis):
+    mandatory_keys = ["displacement"]
     def get_layers_replacement_mapping(
             self
     ) -> list[dict[tuple, tuple]]:
@@ -472,73 +475,14 @@ class SameLayerCouplesReplacementAnalysis(LayerReplacementAnalysis):
 
         targets_lists = self.config.get("targets")
         num_layers = self.config.get("num_layers")
+        displacement = self.config.get("displacement")
 
         return [
             {
                 tuple(el if el != "block_index" else f"{i}" for el in targets):
-                    tuple(el if el != "block_index" else f"{j}" for el in targets) for targets in targets_lists
-            } for i in range(num_layers) for j in range(num_layers) if i == j
+                    tuple(el if el != "block_index" else f"{i + displacement}" for el in targets) for targets in targets_lists
+            } for i in range(max(-displacement, 0), min(num_layers - displacement, num_layers))
         ]
-
-
-class AllLayersReplacementAnalysis(LayerReplacementAnalysis):
-    def get_layers_replacement_mapping(
-            self
-    ) -> list[dict[tuple, tuple]]:
-        """
-        Returns the mapping on which the analysis has to be performed.
-        In the list of mappings to be analyzed, each one is a dictionary where the keys are the paths to the layers to
-        be replaced and the values are the paths to the layers that will replace them.
-
-        Returns:
-            list[dict[tuple, tuple]]:
-                The list of mappings to be analyzed.
-        """
-
-        targets_lists = self.config.get("targets")
-        num_layers = self.config.get("num_layers")
-
-        return [
-            {
-                tuple(el if el != "block_index" else f"{j}" for el in targets):
-                    tuple(el if el != "block_index" else f"{i}" for el in targets)
-                for targets in targets_lists for j in range(num_layers)
-            } for i in range(num_layers)
-        ]
-
-    # TODO documentation
-    @override
-    def format_result_dictionary_to_plot(
-            self,
-            destination_paths: dict[str, list[str]],
-            source_paths: dict[str, list[str]],
-            performance_arrays: dict[str, np.ndarray]
-    ) -> tuple[dict[str, list[str]], dict[str, list[str]], dict[str, np.ndarray]]:
-        """
-        Formats the result dictionary to be plotted.
-
-        Args:
-            destination_paths (dict[str, list[str]]):
-                The dictionary containing the destination paths for each benchmark.
-            source_paths (dict[str, list[str]]):
-                The dictionary containing the source paths for each benchmark.
-            performance_arrays (dict[str, np.ndarray]):
-                The dictionary containing the performance arrays for each benchmark.
-
-        Returns:
-            tuple[dict[str, list[str]], dict[str, list[str]], dict[str, np.ndarray]]:
-                A tuple containing the formatted destination paths, the formatted source paths and the performance
-                arrays for each benchmark.
-        """
-
-        formatted_fist_element = {}
-        for benchmark_id in destination_paths.keys():
-            formatted_fist_element[benchmark_id] = [group[1:-1].replace("), (", ")\n(") for group in destination_paths[benchmark_id]]
-        formatted_second_element = {}
-        for benchmark_id in source_paths.keys():
-            formatted_second_element[benchmark_id] = [group[1:].split("), (")[0] + ")" for group in source_paths[benchmark_id]]
-
-        return formatted_fist_element, formatted_second_element, performance_arrays
 
 
 class SubsequentLayerReplacementAnalysis(AllLayerCouplesReplacementAnalysis):
@@ -645,3 +589,88 @@ class SpecificReplacingLayerReplacementAnalysis(AllLayerCouplesReplacementAnalys
                     tuple(el if el != "block_index" else f"{replacing_block_index}" for el in targets) for targets in targets_lists
             } for i in range(num_layers) if i != replacing_block_index
         ]
+
+
+class SameLayerCouplesReplacementAnalysis(LayerReplacementAnalysis):
+    def get_layers_replacement_mapping(
+            self
+    ) -> list[dict[tuple, tuple]]:
+        """
+        Returns the mapping on which the analysis has to be performed.
+        In the list of mappings to be analyzed, each one is a dictionary where the keys are the paths to the layers to
+        be replaced and the values are the paths to the layers that will replace them.
+
+        Returns:
+            list[dict[tuple, tuple]]:
+                The list of mappings to be analyzed.
+        """
+
+        targets_lists = self.config.get("targets")
+        num_layers = self.config.get("num_layers")
+
+        return [
+            {
+                tuple(el if el != "block_index" else f"{i}" for el in targets):
+                    tuple(el if el != "block_index" else f"{j}" for el in targets) for targets in targets_lists
+            } for i in range(num_layers) for j in range(num_layers) if i == j
+        ]
+
+
+class AllLayersReplacementAnalysis(LayerReplacementAnalysis):
+    def get_layers_replacement_mapping(
+            self
+    ) -> list[dict[tuple, tuple]]:
+        """
+        Returns the mapping on which the analysis has to be performed.
+        In the list of mappings to be analyzed, each one is a dictionary where the keys are the paths to the layers to
+        be replaced and the values are the paths to the layers that will replace them.
+
+        Returns:
+            list[dict[tuple, tuple]]:
+                The list of mappings to be analyzed.
+        """
+
+        targets_lists = self.config.get("targets")
+        num_layers = self.config.get("num_layers")
+
+        return [
+            {
+                tuple(el if el != "block_index" else f"{j}" for el in targets):
+                    tuple(el if el != "block_index" else f"{i}" for el in targets)
+                for targets in targets_lists for j in range(num_layers)
+            } for i in range(num_layers)
+        ]
+
+    # TODO documentation
+    @override
+    def format_result_dictionary_to_plot(
+            self,
+            destination_paths: dict[str, list[str]],
+            source_paths: dict[str, list[str]],
+            performance_arrays: dict[str, np.ndarray]
+    ) -> tuple[dict[str, list[str]], dict[str, list[str]], dict[str, np.ndarray]]:
+        """
+        Formats the result dictionary to be plotted.
+
+        Args:
+            destination_paths (dict[str, list[str]]):
+                The dictionary containing the destination paths for each benchmark.
+            source_paths (dict[str, list[str]]):
+                The dictionary containing the source paths for each benchmark.
+            performance_arrays (dict[str, np.ndarray]):
+                The dictionary containing the performance arrays for each benchmark.
+
+        Returns:
+            tuple[dict[str, list[str]], dict[str, list[str]], dict[str, np.ndarray]]:
+                A tuple containing the formatted destination paths, the formatted source paths and the performance
+                arrays for each benchmark.
+        """
+
+        formatted_fist_element = {}
+        for benchmark_id in destination_paths.keys():
+            formatted_fist_element[benchmark_id] = [group[1:-1].replace("), (", ")\n(") for group in destination_paths[benchmark_id]]
+        formatted_second_element = {}
+        for benchmark_id in source_paths.keys():
+            formatted_second_element[benchmark_id] = [group[1:].split("), (")[0] + ")" for group in source_paths[benchmark_id]]
+
+        return formatted_fist_element, formatted_second_element, performance_arrays
