@@ -754,7 +754,7 @@ class AnalysisTensorDict:
         Returns the keys configuration to analyze.
         """
 
-        return self.layer_paths_configurations_to_analyze
+        return  copy.deepcopy(self.layer_paths_configurations_to_analyze)
 
     def remove_layer_paths_configuration_to_analyze(
             self,
@@ -768,19 +768,17 @@ class AnalysisTensorDict:
                 The configuration or configurations to remove.
         """
 
-        if len(layer_paths_configurations) <= 0:
-            raise ValueError("The configuration must contain at least one element.")
-
-        if isinstance(layer_paths_configurations[0], list):
-            for configuration in layer_paths_configurations:
-                if configuration in self.layer_paths_configurations_to_analyze:
-                    self.layer_paths_configurations_to_analyze.remove(configuration)
-        elif isinstance(layer_paths_configurations[0], str):
-            if layer_paths_configurations in self.layer_paths_configurations_to_analyze:
-                self.layer_paths_configurations_to_analyze.remove(layer_paths_configurations)
-        else:
-            raise ValueError("A configuration must be list of strings.\n"
-                             "A list of strings or a list of list of strings is expected.")
+        if len(layer_paths_configurations) > 0:
+            if isinstance(layer_paths_configurations[0], list):
+                for configuration in layer_paths_configurations:
+                    if configuration in self.layer_paths_configurations_to_analyze:
+                        self.layer_paths_configurations_to_analyze.remove(configuration)
+            elif isinstance(layer_paths_configurations[0], str):
+                if layer_paths_configurations in self.layer_paths_configurations_to_analyze:
+                    self.layer_paths_configurations_to_analyze.remove(layer_paths_configurations)
+            else:
+                raise ValueError("A configuration must be list of strings.\n"
+                                 "A list of strings or a list of list of strings is expected.")
 
     def get_wrappers_for_analysis(
             self,
