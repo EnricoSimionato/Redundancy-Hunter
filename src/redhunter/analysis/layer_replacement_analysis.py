@@ -118,7 +118,8 @@ class LayerReplacementAnalysis(AnalysisExperiment):
                 results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id,
                                                       benchmark_evaluation_args, device)
                 #results = {benchmark_id: {"acc_norm,none": 0.5}} # Testing
-                self.log(f"Results: {results}")
+                self.log(f"Results of the modified model: {results}")
+                print(f"Results of the modified model: {results}")
                 gc.collect()
 
                 # The key in the performance dictionary is a tuple containing the overwritten layers as the first
