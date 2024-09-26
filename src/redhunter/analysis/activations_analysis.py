@@ -18,7 +18,7 @@ from exporch.utils.plot_utils import plot_heatmap
 from exporch.utils.classification import IMDBDataModule
 from exporch.utils.classification import load_model_for_sequence_classification, load_tokenizer_for_sequence_classification
 
-from redhunter.analysis.sorted_layers_rank_analysis import compute_cosine
+from redhunter.analysis.sorted_layers_compression_analysis import compute_cosine
 from redhunter.analysis.analysis_utils import AnalysisModelWrapper
 
 

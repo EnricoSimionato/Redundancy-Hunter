@@ -16,7 +16,7 @@ from exporch.utils.causal_language_modeling import load_model_for_causal_lm
 
 from redhunter.analysis.rank_analysis_utils import compute_explained_variance
 
-from redhunter.analysis.sorted_layers_rank_analysis import compute_cosine
+from redhunter.analysis.sorted_layers_compression_analysis import compute_cosine
 from redhunter.analysis.analysis_utils import AnalysisTensorWrapper, extract_based_on_path
 
 

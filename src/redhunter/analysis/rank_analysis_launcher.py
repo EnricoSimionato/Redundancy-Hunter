@@ -9,7 +9,7 @@ from redhunter.analysis.delta_layers_rank_analysis import (
     perform_all_delta_layers_rank_analysis,
     perform_delta_layers_wrt_average_rank_analysis,
 )
-from redhunter.analysis.sorted_layers_rank_analysis import perform_sorted_layers_rank_analysis
+from redhunter.analysis.sorted_layers_compression_analysis import perform_sorted_layers_rank_analysis
 
 
 def main():
