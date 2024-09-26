@@ -1,10 +1,10 @@
 ########################################    General configuration parameters    ########################################
 path_to_storage: "src/experiments/results"
 
-experiment_type: "specific_displacement_layer_replacement_redundancy_analysis"
+experiment_type: "subsequent_layer_replacement_redundancy_analysis"
 #experiment_type: "resettable_elements_sorted_layers_compression_analysis_with_concatenated_matrices"
 
-version: "0"
+version: "1"
 
 #just_plot: True
 
