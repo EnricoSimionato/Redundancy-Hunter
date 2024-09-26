@@ -1,7 +1,7 @@
 ########################################    General configuration parameters    ########################################
 path_to_storage: "src/experiments/results"
 
-experiment_type: "specific_replaced_layer_replacement_redundancy_analysis"
+experiment_type: "all_layer_couples_displacement_based_replacement_redundancy_analysis"
 #experiment_type: "resettable_elements_sorted_layers_compression_analysis_with_concatenated_matrices"
 
 version: "1"
@@ -29,7 +29,7 @@ targets:
 num_layers: 32
 
 ########################################        Visualization parameters        ########################################
-figure_size: [50, 50]
+figure_size: [32, 32]
 
 ######################################## Layers replacement redundancy analysis ########################################
 benchmark_ids:

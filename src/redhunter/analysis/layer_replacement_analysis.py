@@ -84,7 +84,7 @@ class LayerReplacementAnalysis(AnalysisExperiment):
         gc.collect()
 
         # Wrapping the model to move the layers
-        model_wrapper = LayerReplacingModelWrapper(base_model, None)
+        model_wrapper = self.wrap_model(base_model, None)
         self.log(f"Model wrapped.")
         gc.collect()
 
@@ -197,6 +197,30 @@ class LayerReplacementAnalysis(AnalysisExperiment):
                 ]
 
         return remaining_destination_layer_path_source_layer_path_mapping
+
+    @staticmethod
+    def wrap_model(
+            model,
+            *args,
+            **kwargs
+    ) -> LayerReplacingModelWrapper:
+        """
+        Returns the model wrapper to be used for the analysis.
+
+        Args:
+            model:
+                The model to be wrapped.
+            *args:
+                The additional arguments to be passed to the model wrapper.
+            **kwargs:
+                The additional keyword arguments to be passed to the model wrapper.
+
+        Returns:
+            LayerReplacingModelWrapper:
+                The model wrapper to be used for the analysis.
+        """
+
+        return LayerReplacingModelWrapper(model, *args, **kwargs)
 
     @staticmethod
     def get_performance_dict_key_from_mapping(
@@ -406,7 +430,65 @@ class LayerReplacementAnalysis(AnalysisExperiment):
         return formatted_elements[0], formatted_elements[1], performance_arrays
 
 
+class SingleNullLayersReplacementAnalysis(LayerReplacementAnalysis):
+    """
+    The class for the layer replacement analysis experiments.
+    It performs the analysis by replacing a single layer with a null layer.
+    """
+
+    def get_layers_replacement_mapping(
+            self
+    ) -> list[dict[tuple, tuple]]:
+        """
+        Returns the mapping on which the analysis has to be performed.
+        In the list of mappings to be analyzed, each one is a dictionary where the keys are the paths to the layers to
+        be replaced and the values are the paths to the layers that will replace them.
+
+        Returns:
+            list[dict[tuple, tuple]]:
+                The list of mappings to be analyzed.
+        """
+
+        targets_lists = self.config.get("targets")
+        num_layers = self.config.get("num_layers")
+
+        return [
+            {
+                tuple(el if el != "block_index" else f"{i}" for el in targets): tuple("") for targets in targets_lists
+            } for i in range(num_layers)
+        ]
+
+    @staticmethod
+    def wrap_model(
+            model,
+            *args,
+            **kwargs
+    ) -> LayerReplacingModelWrapper:
+        """
+        Returns the model wrapper to be used for the analysis.
+
+        Args:
+            model:
+                The model to be wrapped.
+            *args:
+                The additional arguments to be passed to the model wrapper.
+            **kwargs:
+                The additional keyword arguments to be passed to the model wrapper.
+
+        Returns:
+            LayerReplacingModelWrapper:
+                The model wrapper to be used for the analysis.
+        """
+
+        return LayerReplacingModelWrapper(model, *args, **kwargs)
+
+
 class AllLayerCouplesReplacementAnalysis(LayerReplacementAnalysis):
+    """
+    The class for the layer replacement analysis experiments.
+    It performs the analysis by replacing all the couples of layers.
+    """
+
     def get_layers_replacement_mapping(
             self
     ) -> list[dict[tuple, tuple]]:
@@ -429,6 +511,68 @@ class AllLayerCouplesReplacementAnalysis(LayerReplacementAnalysis):
                     tuple(el if el != "block_index" else f"{j}" for el in targets) for targets in targets_lists
             } for i in range(num_layers) for j in range(num_layers) if i != j
         ]
+
+    @override
+    def _postprocess_results(
+            self
+    ) -> None:
+        """
+        Post-processes the results of the analysis before plotting them.
+        """
+
+        destination_layer_path_source_layer_path_mapping_list, performance_dict = self.data
+
+        self.log(f"Post-processing the results...")
+        targets_lists = self.config.get("targets")
+        num_layers = self.config.get("num_layers")
+        redundant_mappings  = [
+            {
+                tuple(el if el != "block_index" else f"{i}" for el in targets):
+                    tuple(el if el != "block_index" else f"{j}" for el in targets) for targets in targets_lists
+            } for i in range(num_layers) for j in range(num_layers) if i == j
+        ]
+        for benchmark_id in performance_dict.keys():
+            for mapping in redundant_mappings:
+                performance_dict[benchmark_id][self.get_performance_dict_key_from_mapping(mapping)] = performance_dict[benchmark_id][("original", "original")]
+
+        self.data = (destination_layer_path_source_layer_path_mapping_list, performance_dict)
+
+        self.store_data()
+        self.log("The results have been post-processed and stored.")
+
+
+class AllLayerCouplesDisplacementBasedReplacementAnalysis(LayerReplacementAnalysis):
+    """
+    The class for the layer replacement analysis experiments.
+    It performs the analysis by replacing all the couples of layers following an order based on a displacement.
+    """
+
+    def get_layers_replacement_mapping(
+            self
+    ) -> list[dict[tuple, tuple]]:
+        """
+        Returns the mapping on which the analysis has to be performed.
+        In the list of mappings to be analyzed, each one is a dictionary where the keys are the paths to the layers to
+        be replaced and the values are the paths to the layers that will replace them.
+
+        Returns:
+            list[dict[tuple, tuple]]:
+                The list of mappings to be analyzed.
+        """
+
+        targets_lists = self.config.get("targets")
+        num_layers = self.config.get("num_layers")
+        displacements = [(i+1)//2 if i % 2 != 0 else -i//2 for i in range(1, 2*num_layers+1)]
+
+        return [
+            {
+                tuple(el if el != "block_index" else f"{i}" for el in targets):
+                    tuple(el if el != "block_index" else f"{i + displacement}" for el in targets)
+                for targets in targets_lists
+            }
+            for displacement in displacements
+            for i in range(max(-displacement, 0), min(num_layers - displacement, num_layers))
+    ]
 
     @override
     def _postprocess_results(
