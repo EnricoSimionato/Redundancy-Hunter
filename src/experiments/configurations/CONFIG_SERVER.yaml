@@ -45,6 +45,7 @@ evaluation_args:
         batch_size: 32
 
 replaced_block_index: 25
+replacing_block_index: 25
 displacement: 2
 
 ########################################         Sorted layers analysis         ########################################
