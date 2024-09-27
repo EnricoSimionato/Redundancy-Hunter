@@ -18,7 +18,8 @@ from exporch.utils.causal_language_modeling import load_model_for_causal_lm, loa
 from exporch.experiment import benchmark_id_metric_name_mapping, evaluate_model_on_benchmark
 from exporch.utils.plot_utils.heatmap import plot_heatmap
 
-from redhunter.analysis.layer_replacement_analysis_utils import LayerReplacingModelWrapper
+from redhunter.analysis.layer_replacement_analysis_utils import LayerReplacingModelWrapper, \
+    NullLayerReplacingModelWrapper
 from redhunter.analysis_experiment import AnalysisExperiment
 
 
@@ -454,7 +455,7 @@ class SingleNullLayersReplacementAnalysis(LayerReplacementAnalysis):
 
         return [
             {
-                tuple(el if el != "block_index" else f"{i}" for el in targets): tuple("") for targets in targets_lists
+                tuple(el if el != "block_index" else f"{i}" for el in targets): ("all_zeros",) for targets in targets_lists
             } for i in range(num_layers)
         ]
 
@@ -480,7 +481,7 @@ class SingleNullLayersReplacementAnalysis(LayerReplacementAnalysis):
                 The model wrapper to be used for the analysis.
         """
 
-        return LayerReplacingModelWrapper(model, *args, **kwargs)
+        return NullLayerReplacingModelWrapper(model, *args, **kwargs)
 
 
 class AllLayerCouplesReplacementAnalysis(LayerReplacementAnalysis):

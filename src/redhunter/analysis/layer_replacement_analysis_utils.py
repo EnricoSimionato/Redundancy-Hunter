@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import copy
-from typing import override
+from typing import Any, override
 
 import torch
 
@@ -17,14 +17,14 @@ class LayerReplacingModelWrapper:
     Args:
         model ([transformers.PreTrainedModel | transformers.AutoModel]):
             The model to be wrapped.
-        destination_layer_path_source_layer_path_mapping (dict[list | tuple: list | tuple]):
+        destination_layer_path_source_layer_path_mapping (dict[list | tuple: list | tuple | Any]):
             The mapping between the path to the layers to be replaced and the path to the layers to be used to replace
             them.
 
     Attributes:
         model ([transformers.PreTrainedModel | transformers.AutoModel]):
             The wrapped model.
-        destination_layer_path_source_layer_path_mapping (dict[list | tuple: list | tuple]):
+        destination_layer_path_source_layer_path_mapping (dict[list | tuple: list | tuple | Any]):
             The mapping between the path to the layers to be replaced and the path to the layers to be used to replace
             them.
             The structure of the dictionary is as follows:
@@ -39,7 +39,7 @@ class LayerReplacingModelWrapper:
     def __init__(
             self,
             model: [transformers.PreTrainedModel | transformers.AutoModel],
-            destination_layer_path_source_layer_path_mapping: dict[list | tuple: list | tuple] = None,
+            destination_layer_path_source_layer_path_mapping: dict[list | tuple: list | tuple | Any] = None,
     ) -> None:
         self.model = model
         self.destination_layer_path_source_layer_path_mapping = destination_layer_path_source_layer_path_mapping
@@ -63,12 +63,12 @@ class LayerReplacingModelWrapper:
 
     def get_destination_layer_path_source_layer_path_mapping(
             self
-    ) -> dict[list | tuple: list | tuple]:
+    ) -> dict[list | tuple: list | tuple | Any]:
         """
         Returns the mapping between the layers to be replaced and the layers to be used to replace them.
 
         Returns:
-            dict[list | tuple: list | tuple]:
+            dict[list | tuple: list | tuple | Any]:
                 The mapping between the path to the layers to be replaced and the path to the layers to be used to replace
                 them.
         """
@@ -93,13 +93,13 @@ class LayerReplacingModelWrapper:
 
     def set_destination_layer_path_source_layer_path_mapping(
             self,
-            destination_layer_path_source_layer_path_mapping: dict[list | tuple: list | tuple]
+            destination_layer_path_source_layer_path_mapping: dict[list | tuple: list | tuple | Any]
     ) -> None:
         """
         Sets the mapping between the layers to be replaced and the layers to be used to replace them.
 
         Args:
-            destination_layer_path_source_layer_path_mapping (dict[list | tuple: list | tuple]):
+            destination_layer_path_source_layer_path_mapping (dict[list | tuple: list | tuple | Any]):
                 The mapping between the path to the layers to be replaced and the path to the layers to be used to replace
                 them.
         """
@@ -116,17 +116,22 @@ class LayerReplacingModelWrapper:
         """
 
         source_paths = set(self.get_destination_layer_path_source_layer_path_mapping().values())
-        source_layer_path_source_layer_mapping = {source_path: None for source_path in source_paths}
-        self._extract_source_layers(self.get_model(), source_layer_path_source_layer_mapping)
-        if any([source_layer_path_source_layer_mapping[source_path] is None
-                for source_path in source_layer_path_source_layer_mapping.keys()]):
-            raise Exception(f"Some layers could not be extracted:\n"
-                            f"{'\n - '.join([str(source_path) for source_path in source_layer_path_source_layer_mapping.keys() if source_layer_path_source_layer_mapping[source_path] is None])}")
-        source_layer_path_source_layer_mapping = self.pre_process_source_layers(source_layer_path_source_layer_mapping)
-        destination_layer_path_source_layer_mapping = {
-            destination_path: source_layer_path_source_layer_mapping[source_path]
-            for destination_path, source_path in self.get_destination_layer_path_source_layer_path_mapping().items()
-        }
+        if len(source_paths) != 0 and not all([isinstance(source_path, type(list(source_paths)[0])) for source_path in source_paths]):
+            raise Exception("The source paths must be of the same type.")
+        if len(source_paths) != 0 and (isinstance(list(source_paths)[0], list) or isinstance(list(source_paths)[0], tuple)):
+            source_layer_path_source_layer_mapping = {source_path: None for source_path in source_paths}
+            self._extract_source_layers(self.get_model(), source_layer_path_source_layer_mapping)
+            if any([source_layer_path_source_layer_mapping[source_path] is None
+                    for source_path in source_layer_path_source_layer_mapping.keys()]):
+                raise Exception(f"Some layers could not be extracted:\n"
+                                f"{'\n - '.join([str(source_path) for source_path in source_layer_path_source_layer_mapping.keys() if source_layer_path_source_layer_mapping[source_path] is None])}")
+            source_layer_path_source_layer_mapping = self.pre_process_source_layers(source_layer_path_source_layer_mapping)
+            destination_layer_path_source_layer_mapping = {
+                destination_path: source_layer_path_source_layer_mapping[source_path]
+                for destination_path, source_path in self.get_destination_layer_path_source_layer_path_mapping().items()
+            }
+        else:
+            destination_layer_path_source_layer_mapping = self.get_destination_layer_path_source_layer_path_mapping()
         self._fill_destination_layers(self.model, destination_layer_path_source_layer_mapping)
 
     def _extract_source_layers(
