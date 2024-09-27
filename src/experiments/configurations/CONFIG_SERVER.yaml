@@ -29,7 +29,7 @@ targets:
 num_layers: 32
 
 ########################################        Visualization parameters        ########################################
-figure_size: [32, 32]
+figure_size: [40, 40]
 
 ######################################## Layers replacement redundancy analysis ########################################
 benchmark_ids:
