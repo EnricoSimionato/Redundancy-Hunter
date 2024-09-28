@@ -27,6 +27,10 @@ DOCKER_USERNAME=$1
 DOCKER_PASSWORD=$2
 IMAGE_NAME="redhunter"
 
+# Prune unused containers and images
+echo "Cleaning up unused containers and images..."
+docker system prune -f
+
 # Generate a unique container name with timestamp
 CONTAINER_NAME="redhunter_$(date +%s)"
 
