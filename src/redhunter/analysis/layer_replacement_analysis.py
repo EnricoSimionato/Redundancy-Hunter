@@ -93,9 +93,9 @@ class LayerReplacementAnalysis(AnalysisExperiment):
             logging.info("Evaluating the original model")
             print("Evaluating the original model")
             if ("original", "original") not in performance_dict[benchmark_id].keys():
-                original_model_results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id,
-                                                      evaluation_args[benchmark_id], device)
-                #original_model_results = {benchmark_id: {"acc_norm,none": 0.7}} # Testing
+                #original_model_results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id,
+                #                                      evaluation_args[benchmark_id], device)
+                original_model_results = {benchmark_id: {"acc_norm,none": 0.7}} # Testing
                 performance_dict[benchmark_id][("original", "original")] = original_model_results
                 self.log(f"Results of the original model: {original_model_results}")
                 print(f"Results of the original model: {original_model_results}")
@@ -272,7 +272,7 @@ class LayerReplacementAnalysis(AnalysisExperiment):
         self.log(f"Original model performance: {original_model_performance}")
 
         # Plotting the results
-        overwritten_layers_labels_row_list, duplicated_layers_labels_column_list, post_processed_results_list = self._format_result_dictionary_to_plot(performance_dict)
+        duplicated_layers_labels_list, overwritten_layers_labels_list, post_processed_results_list = self._format_result_dictionary_to_plot(performance_dict, original_model_performance)
         for benchmark_id in post_processed_results_list.keys():
             self.log(f"Printing the results for task: {benchmark_id}")
             plot_heatmap(
@@ -280,10 +280,10 @@ class LayerReplacementAnalysis(AnalysisExperiment):
                 os.path.join(config.get("directory_path"), f"heatmap_{benchmark_id}.png"),
                 f"Results for the model {config.get('model_id').split('/')[-1]} on the task {benchmark_id}",
                 axis_titles=[f"Metric: {benchmark_id_metric_name_mapping[benchmark_id]}"],
-                x_title="Duplicated layers labels",
-                y_title="Overwritten layers labels",
-                x_labels=[duplicated_layers_labels_column_list[benchmark_id]],
-                y_labels=[overwritten_layers_labels_row_list[benchmark_id]],
+                x_title="Overwritten layers labels",
+                y_title="Duplicated layers labels",
+                x_labels=[overwritten_layers_labels_list[benchmark_id]],
+                y_labels=[duplicated_layers_labels_list[benchmark_id]],
                 fig_size=fig_size,
                 edge_color="white",
                 fontsize=22,
@@ -295,10 +295,10 @@ class LayerReplacementAnalysis(AnalysisExperiment):
                 os.path.join(config.get("directory_path"), f"heatmap_{benchmark_id}_greater_baseline.png"),
                 f"Models with better performance than the original one ({config.get('model_id').split('/')[-1]}) on the task {benchmark_id}",
                 axis_titles=["Coloured cells represent models with better performance than the original one"],
-                x_title="Duplicated layers labels",
-                y_title="Overwritten layers labels",
-                x_labels=[duplicated_layers_labels_column_list[benchmark_id]],
-                y_labels=[overwritten_layers_labels_row_list[benchmark_id]],
+                x_title="Overwritten layers labels",
+                y_title="Duplicated layers labels",
+                x_labels=[overwritten_layers_labels_list[benchmark_id]],
+                y_labels=[duplicated_layers_labels_list[benchmark_id]],
                 fig_size=fig_size,
                 edge_color="white",
                 fontsize=22,
@@ -307,45 +307,53 @@ class LayerReplacementAnalysis(AnalysisExperiment):
 
     def _format_result_dictionary_to_plot(
             self,
-            result_dictionary: dict[str, dict[tuple[str, str], dict[str, dict[str, float]]]]
+            result_dictionary: dict[str, dict[tuple[str, str], dict[str, dict[str, float]]]],
+            original_model_performance_dictionary: dict[str, dict[str, float]]
     ) -> tuple[dict[str, list[str]], dict[str, list[str]], dict[str, np.ndarray]]:
         """
-        Formats the result dictionary to be plotted extracting the unique destination paths and the unique source paths
+        Formats the result dictionary to be plotted extracting the unique source paths and the unique destination paths
         and the performance arrays for each benchmark.
-        After the extraction of these elements, they can be formatted in a different way by the specific analysis
+        After the extraction of these elements, they can be formatted in different ways by the specific analysis
         overriding the method 'format_result_dictionary_to_plot'.
 
         Args:
             result_dictionary (dict[str, dict[tuple[str, str], dict[str, float]]]):
                 The dictionary containing the results for each benchmark.
+            original_model_performance_dictionary (dict[str, dict[str, float]]):
+                The dictionary containing the performance of the original model for each benchmark.
 
         Returns:
-            tuple[dict[str, list[tuple[str, str]]], dict[str, list[tuple[str, str]]], dict[str, np.ndarray]]:
-                A tuple
-                containing the unique destination paths and the unique source paths and the performance arrays
-                for each benchmark.
+            dict[str, list[tuple[str, str]]]:
+                Unique source paths for each benchmark.
+            dict[str, list[tuple[str, str]]]:
+                Unique destination paths for each benchmark.
+            dict[str, np.ndarray]:
+                Performance arrays for each benchmark.
         """
 
         return self.format_result_dictionary_to_plot(
-            *self.extract_and_sort_unique_elements_from_result_dictionary(result_dictionary)
+            *self.extract_and_sort_destination_source_labels_from_result_dictionary(result_dictionary), original_model_performance_dictionary
         )
 
     @staticmethod
-    def extract_and_sort_unique_elements_from_result_dictionary(
+    def extract_and_sort_destination_source_labels_from_result_dictionary(
             result_dictionary: dict[str, dict[tuple[str, str], dict[str, dict[str, float]]]]
     ) -> tuple[dict[str, list[str]], dict[str, list[str]], dict[str, np.ndarray]]:
         """
-        Extracts and sorts the unique destination paths and the unique source paths and the performance arrays for each
-        benchmark.
+        Formats the result dictionary to be plotted extracting the unique source paths and the unique destination paths
+        and the performance arrays for each benchmark.
 
         Args:
             result_dictionary (dict[str, dict[tuple[str, str], dict[str, float]]]):
                 The dictionary containing the results for each benchmark.
 
         Returns:
-            tuple[dict[str, list[str]], dict[str, list[str]], dict[str, np.ndarray]]:
-                A tuple containing the unique destination paths and the unique source paths and the performance arrays
-                for each benchmark.
+            dict[str, list[tuple[str, str]]]:
+                Unique source paths for each benchmark.
+            dict[str, list[tuple[str, str]]]:
+                Unique destination paths for each benchmark.
+            dict[str, np.ndarray]:
+                Performance arrays for each benchmark.
         """
 
         # Helper function to extract tuples from string
@@ -357,73 +365,81 @@ class LayerReplacementAnalysis(AnalysisExperiment):
             match = re.search(r'\d+', s)
             return int(match.group()) if match else float('inf')
 
-        task_specific_first_elements = {}
-        task_specific_second_elements = {}
+        destination_paths_all_benchmarks = {}
+        source_paths_all_benchmarks = {}
         performance_arrays = {}
 
         # Collecting task-specific unique grouped elements and their order
-        for task, task_dict in result_dictionary.items():
-            first_groups = []
-            second_groups = []
+        for benchmark_id, benchmark_dict in result_dictionary.items():
+            benchmark_destination_paths = []
+            benchmark_source_paths = []
 
             # Collecting grouped elements for each task
-            for (key1, key2), _ in task_dict.items():
-                first_tuples = str(extract_tuples(key1))
-                second_tuples = str(extract_tuples(key2))
+            for (destination_paths_str, source_paths_str), _ in benchmark_dict.items():
+                a = extract_tuples(destination_paths_str)
+                b = extract_tuples(source_paths_str)
+                destination_paths = str(extract_tuples(destination_paths_str))
+                source_paths = str(extract_tuples(source_paths_str))
 
                 # Adding unique groups for the first and second elements
-                if first_tuples not in first_groups:
-                    first_groups.append(first_tuples)
-                if second_tuples not in second_groups:
-                    second_groups.append(second_tuples)
+                if destination_paths not in benchmark_destination_paths:
+                    benchmark_destination_paths.append(destination_paths)
+                if source_paths not in benchmark_source_paths:
+                    benchmark_source_paths.append(source_paths)
 
             # Sort first and second groups based on the first number present in them
-            first_groups.sort(key=lambda x: extract_first_number(x))
-            second_groups.sort(key=lambda x: extract_first_number(x))
+            benchmark_destination_paths.sort(key=lambda x: extract_first_number(x))
+            benchmark_source_paths.sort(key=lambda x: extract_first_number(x))
 
-            task_specific_first_elements[task] = first_groups
-            task_specific_second_elements[task] = second_groups
+            destination_paths_all_benchmarks[benchmark_id] = benchmark_destination_paths
+            source_paths_all_benchmarks[benchmark_id] = benchmark_source_paths
 
-            performance_array = np.full((len(first_groups), len(second_groups)), np.nan)
+            performance_array = np.full((len(benchmark_source_paths), len(benchmark_destination_paths)), np.nan)
             # Filling the performance array with the metrics for this task
-            for (key1, key2), value in task_dict.items():
-                first_tuples = str(extract_tuples(key1))
-                second_tuples = str(extract_tuples(key2))
+            for (destination_paths_str, source_paths), value in benchmark_dict.items():
+                destination_paths = str(extract_tuples(destination_paths_str))
+                source_paths = str(extract_tuples(source_paths))
 
                 # Finding the correct row and column by the group index
-                row = first_groups.index(first_tuples)
-                col = second_groups.index(second_tuples)
-                performance_array[row, col] = value[task][benchmark_id_metric_name_mapping[task]]
+                col = benchmark_destination_paths.index(destination_paths)
+                row = benchmark_source_paths.index(source_paths)
+                performance_array[row, col] = value[benchmark_id][benchmark_id_metric_name_mapping[benchmark_id]]
 
-            performance_arrays[task] = performance_array
+            performance_arrays[benchmark_id] = performance_array
 
-        return task_specific_first_elements, task_specific_second_elements, performance_arrays
+        return source_paths_all_benchmarks, destination_paths_all_benchmarks, performance_arrays
 
     def format_result_dictionary_to_plot(
             self,
-            destination_paths: dict[str, list[str]],
             source_paths: dict[str, list[str]],
-            performance_arrays: dict[str, np.ndarray]
+            destination_paths: dict[str, list[str]],
+            performance_arrays: dict[str, np.ndarray],
+            original_model_performance_dictionary: dict[str, dict[str, float]]
     ) -> tuple[dict[str, list[str]], dict[str, list[str]], dict[str, np.ndarray]]:
         """
         Formats the result dictionary to be plotted.
 
         Args:
-            destination_paths (dict[str, list[str]]):
-                The dictionary containing the destination paths for each benchmark.
             source_paths (dict[str, list[str]]):
                 The dictionary containing the source paths for each benchmark.
+            destination_paths (dict[str, list[str]]):
+                The dictionary containing the destination paths for each benchmark.
             performance_arrays (dict[str, np.ndarray]):
                 The dictionary containing the performance arrays for each benchmark.
+            original_model_performance_dictionary (dict[str, dict[str, float]]):
+                The dictionary containing the performance of the original model for each benchmark.
 
         Returns:
-            tuple[dict[str, list[str]], dict[str, list[str]], dict[str, np.ndarray]]:
-                A tuple containing the formatted destination paths, the formatted source paths and the performance
-                arrays for each benchmark.
+            dict[str, list[tuple[str, str]]]:
+                Unique source paths for each benchmark.
+            dict[str, list[tuple[str, str]]]:
+                Unique destination paths for each benchmark.
+            dict[str, np.ndarray]:
+                Performance arrays for each benchmark.
         """
 
         formatted_elements = ({}, {})
-        elements = (destination_paths, source_paths)
+        elements = (source_paths, destination_paths)
         for element, formatted_element in zip(elements, formatted_elements):
             for benchmark_id in element.keys():
                 formatted_element[benchmark_id] = [group[1:-1].replace("), (", ")\n(") for group in element[benchmark_id]]
@@ -482,6 +498,45 @@ class SingleNullLayersReplacementAnalysis(LayerReplacementAnalysis):
         """
 
         return NullLayerReplacingModelWrapper(model, *args, **kwargs)
+
+    @override
+    def format_result_dictionary_to_plot(
+            self,
+            source_paths: dict[str, list[str]],
+            destination_paths: dict[str, list[str]],
+            performance_arrays: dict[str, np.ndarray],
+            original_model_performance_dictionary: dict[str, dict[str, dict[str, float]]]
+    ) -> tuple[dict[str, list[str]], dict[str, list[str]], dict[str, np.ndarray]]:
+        """
+        Formats the result dictionary to be plotted.
+
+        Args:
+            source_paths (dict[str, list[str]]):
+                The dictionary containing the source paths for each benchmark.
+            destination_paths (dict[str, list[str]]):
+                The dictionary containing the destination paths for each benchmark.
+            performance_arrays (dict[str, np.ndarray]):
+                The dictionary containing the performance arrays for each benchmark.
+            original_model_performance_dictionary (dict[str, dict[str, float]]):
+                The dictionary containing the performance of the original model for each benchmark.
+
+        Returns:
+            dict[str, list[tuple[str, str]]]:
+                Unique source paths for each benchmark.
+            dict[str, list[tuple[str, str]]]:
+                Unique destination paths for each benchmark.
+            dict[str, np.ndarray]:
+                Performance arrays for each benchmark.
+        """
+
+        for benchmark_id in performance_arrays.keys():
+            original_model_performace = original_model_performance_dictionary[benchmark_id][benchmark_id][benchmark_id_metric_name_mapping[benchmark_id]]
+            performance_arrays[benchmark_id] = np.concatenate(
+                (np.array([[original_model_performace]]), performance_arrays[benchmark_id]), axis=1
+            )
+            destination_paths[benchmark_id] = ["Original model"] + destination_paths[benchmark_id]
+
+        return source_paths, destination_paths, performance_arrays
 
 
 class AllLayerCouplesReplacementAnalysis(LayerReplacementAnalysis):
@@ -787,36 +842,41 @@ class AllLayersReplacementAnalysis(LayerReplacementAnalysis):
             } for i in range(num_layers)
         ]
 
-    # TODO documentation
     @override
     def format_result_dictionary_to_plot(
             self,
-            destination_paths: dict[str, list[str]],
             source_paths: dict[str, list[str]],
-            performance_arrays: dict[str, np.ndarray]
+            destination_paths: dict[str, list[str]],
+            performance_arrays: dict[str, np.ndarray],
+            original_model_performance_dictionary: dict[str, dict[str, float]]
     ) -> tuple[dict[str, list[str]], dict[str, list[str]], dict[str, np.ndarray]]:
         """
         Formats the result dictionary to be plotted.
 
         Args:
-            destination_paths (dict[str, list[str]]):
-                The dictionary containing the destination paths for each benchmark.
             source_paths (dict[str, list[str]]):
                 The dictionary containing the source paths for each benchmark.
+            destination_paths (dict[str, list[str]]):
+                The dictionary containing the destination paths for each benchmark.
             performance_arrays (dict[str, np.ndarray]):
                 The dictionary containing the performance arrays for each benchmark.
+            original_model_performance_dictionary (dict[str, dict[str, float]]):
+                The dictionary containing the performance of the original model for each benchmark.
 
         Returns:
-            tuple[dict[str, list[str]], dict[str, list[str]], dict[str, np.ndarray]]:
-                A tuple containing the formatted destination paths, the formatted source paths and the performance
-                arrays for each benchmark.
+            dict[str, list[tuple[str, str]]]:
+                Unique source paths for each benchmark.
+            dict[str, list[tuple[str, str]]]:
+                Unique destination paths for each benchmark.
+            dict[str, np.ndarray]:
+                Performance arrays for each benchmark.
         """
 
-        formatted_fist_element = {}
-        for benchmark_id in destination_paths.keys():
-            formatted_fist_element[benchmark_id] = [group[1:-1].replace("), (", ")\n(") for group in destination_paths[benchmark_id]]
-        formatted_second_element = {}
+        formatted_source_paths = {}
         for benchmark_id in source_paths.keys():
-            formatted_second_element[benchmark_id] = [group[1:].split("), (")[0] + ")" for group in source_paths[benchmark_id]]
+            formatted_source_paths[benchmark_id] = [group[1:].split("), (")[0] + ")" for group in source_paths[benchmark_id]]
+        formatted_destination_paths = {}
+        for benchmark_id in destination_paths.keys():
+            formatted_destination_paths[benchmark_id] = [group[1:-1].replace("), (", ")\n(") for group in destination_paths[benchmark_id]]
 
-        return formatted_fist_element, formatted_second_element, performance_arrays
+        return formatted_source_paths, formatted_destination_paths, performance_arrays

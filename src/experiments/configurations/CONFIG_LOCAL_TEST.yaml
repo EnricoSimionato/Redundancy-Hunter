@@ -1,10 +1,8 @@
 ########################################    General configuration parameters    ########################################
 path_to_storage: "src/experiments/results"
 
-#experiment_type: "specific_displacement_layer_replacement_redundancy_analysis"
+experiment_type: "specific_displacement_layer_replacement_redundancy_analysis"
 #experiment_type: "resettable_elements_sorted_layers_compression_analysis_with_concatenated_matrices"
-
-version: "0"
 
 #just_plot: True
 
@@ -13,30 +11,20 @@ device: "mps"
 seed: 42
 
 ########################################     Model configuration parameters     ########################################
-#model_id: "mistralai/Mistral-7B-v0.3"
 model_id: "EleutherAI/gpt-neo-1.3B"
-
-#quantization: 4bit
 dtype: "float16"
 
 ########################################   Tokenizer configuration parameters   ########################################
-#tokenizer_id: "mistralai/Mistral-7B-v0.3"
 tokenizer_id: "EleutherAI/gpt-neo-1.3B"
 
 ########################################       Analysis target parameters       ########################################
-#targets:
-#    - ["block_index", "mlp", "gate_proj"]
-#    - ["block_index", "mlp", "up_proj"]
-#    - ["block_index", "mlp", "down_proj"]
-#num_layers: 32
-
 targets:
     - ["block_index", "mlp", "c_fc"]
     - ["block_index", "mlp", "c_proj"]
 num_layers: 24
 
 ########################################        Visualization parameters        ########################################
-figure_size: [5, 40]
+figure_size: [40, 20]
 
 ######################################## Layers replacement redundancy analysis ########################################
 benchmark_ids:
