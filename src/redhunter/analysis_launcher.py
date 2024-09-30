@@ -49,6 +49,7 @@ def main() -> None:
     # Extracting the configuration name and the environment
     config_file_name = sys.argv[1]
 
+    # Creating and launching the analysis
     analysis_experiment = GeneralPurposeExperimentFactory.create(f"src/experiments/configurations/{config_file_name}")
     analysis_experiment.launch_experiment()
 

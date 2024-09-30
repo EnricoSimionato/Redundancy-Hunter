@@ -10,8 +10,6 @@ from typing import Any, override
 
 import numpy as np
 
-import torch
-
 from exporch import Config, get_available_device
 
 from exporch.utils.causal_language_modeling import load_model_for_causal_lm, load_tokenizer_for_causal_lm
@@ -47,7 +45,6 @@ class LayerReplacementAnalysis(AnalysisExperiment):
         Performs the layer replacement analysis experiment.
         """
 
-        gc.collect()
         config = self.config
 
         # Setting the parameters for the layer switching
@@ -87,15 +84,14 @@ class LayerReplacementAnalysis(AnalysisExperiment):
         # Wrapping the model to move the layers
         model_wrapper = self.wrap_model(base_model, None)
         self.log(f"Model wrapped.")
-        gc.collect()
 
         for benchmark_id in remaining_destination_layer_path_source_layer_path_mapping_list.keys():
             logging.info("Evaluating the original model")
             print("Evaluating the original model")
             if ("original", "original") not in performance_dict[benchmark_id].keys():
-                #original_model_results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id,
-                #                                      evaluation_args[benchmark_id], device)
-                original_model_results = {benchmark_id: {"acc_norm,none": 0.7}} # Testing
+                original_model_results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id,
+                                                      evaluation_args[benchmark_id], device)
+                #original_model_results = {benchmark_id: {"acc_norm,none": 0.7}} # Testing
                 performance_dict[benchmark_id][("original", "original")] = original_model_results
                 self.log(f"Results of the original model: {original_model_results}")
                 print(f"Results of the original model: {original_model_results}")
@@ -118,10 +114,9 @@ class LayerReplacementAnalysis(AnalysisExperiment):
                 self.log(f"Starting the evaluation of the model on the device {model_wrapper.get_model().device}.")
                 results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id,
                                                       benchmark_evaluation_args, device)
-                #results = {benchmark_id: {"acc_norm,none": 0.5}} # Testing
+                #results = {benchmark_id: {"acc_norm,none": int(list(destination_layer_path_source_layer_path_mapping.keys())[0][0])}} # Testing
                 self.log(f"Results of the modified model: {results}")
                 print(f"Results of the modified model: {results}")
-                gc.collect()
 
                 # The key in the performance dictionary is a tuple containing the overwritten layers as the first
                 # element and the ones used to overwrite the destination as second elements
@@ -139,17 +134,12 @@ class LayerReplacementAnalysis(AnalysisExperiment):
                 self.store_data()
                 self.log(f"Partial data stored.")
 
-                torch.cuda.empty_cache()
-                gc.collect()
-
             self.data = (destination_layer_path_source_layer_path_mapping_list, performance_dict)
 
             # Storing the data
             self.log(f"Trying to store the data for benchmark {benchmark_id}...")
             self.store_data()
             self.log(f"Stored data up to benchmark {benchmark_id}.")
-            torch.cuda.empty_cache()
-            gc.collect()
 
         self.log("All data stored.")
 

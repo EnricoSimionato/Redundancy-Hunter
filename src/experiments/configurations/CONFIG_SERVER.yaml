@@ -1,8 +1,8 @@
 ########################################    General configuration parameters    ########################################
 path_to_storage: "src/experiments/results"
 
-experiment_type: "specific_replaced_layer_replacement_redundancy_analysis"
-#experiment_type: "single_null_layers_replacement_redundancy_analysis"
+#experiment_type: "specific_replaced_layer_replacement_redundancy_analysis"
+experiment_type: "single_null_layers_replacement_redundancy_analysis"
 
 #just_plot: True
 
@@ -25,13 +25,15 @@ targets:
 num_layers: 32
 
 ########################################        Visualization parameters        ########################################
-figure_size: [40, 40]
+figure_size: [40, 15]
 
 ######################################## Layers replacement redundancy analysis ########################################
 benchmark_ids:
-    - "hellaswag"
+    - "gsm8k"
 evaluation_args:
     hellaswag:
+        batch_size: 32
+    gsm8k:
         batch_size: 32
 
 replaced_block_index: 25
