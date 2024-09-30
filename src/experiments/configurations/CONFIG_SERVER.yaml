@@ -34,7 +34,7 @@ evaluation_args:
     hellaswag:
         batch_size: 32
     gsm8k:
-        batch_size: 32
+        batch_size: 2
 
 replaced_block_index: 25
 replacing_block_index: 25
