@@ -409,8 +409,8 @@ class LayerReplacementAnalysis(AnalysisExperiment):
 
         return source_paths_all_benchmarks, destination_paths_all_benchmarks, performance_arrays
 
+    @staticmethod
     def format_result_dictionary_to_plot(
-            self,
             source_paths: dict[str, list[str]],
             destination_paths: dict[str, list[str]],
             performance_arrays: dict[str, np.ndarray],
@@ -499,9 +499,9 @@ class SingleNullLayersReplacementAnalysis(LayerReplacementAnalysis):
 
         return NullLayerReplacingModelWrapper(model, *args, **kwargs)
 
+    @staticmethod
     @override
     def format_result_dictionary_to_plot(
-            self,
             source_paths: dict[str, list[str]],
             destination_paths: dict[str, list[str]],
             performance_arrays: dict[str, np.ndarray],
@@ -530,9 +530,9 @@ class SingleNullLayersReplacementAnalysis(LayerReplacementAnalysis):
         """
 
         for benchmark_id in performance_arrays.keys():
-            original_model_performace = original_model_performance_dictionary[benchmark_id][benchmark_id][benchmark_id_metric_name_mapping[benchmark_id]]
+            original_model_performance = original_model_performance_dictionary[benchmark_id][benchmark_id][benchmark_id_metric_name_mapping[benchmark_id]]
             performance_arrays[benchmark_id] = np.concatenate(
-                (np.array([[original_model_performace]]), performance_arrays[benchmark_id]), axis=1
+                (np.array([[original_model_performance]]), performance_arrays[benchmark_id]), axis=1
             )
             destination_paths[benchmark_id] = ["Original model"] + destination_paths[benchmark_id]
 
@@ -842,9 +842,9 @@ class AllLayersReplacementAnalysis(LayerReplacementAnalysis):
             } for i in range(num_layers)
         ]
 
+    @staticmethod
     @override
     def format_result_dictionary_to_plot(
-            self,
             source_paths: dict[str, list[str]],
             destination_paths: dict[str, list[str]],
             performance_arrays: dict[str, np.ndarray],

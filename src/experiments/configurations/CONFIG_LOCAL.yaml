@@ -1,59 +1,41 @@
 ########################################    General configuration parameters    ########################################
 path_to_storage: "src/experiments/results"
 
-#experiment_type: "previous_layer_replacement_redundancy_analysis"
-experiment_type: "resettable_elements_sorted_layers_compression_analysis_with_concatenated_matrices"
+experiment_type: "all_layer_couples_displacement_based_replacement_redundancy_analysis"
 
 version: "0"
 
-#just_plot: True
+just_plot: True
 
 verbose: 1
 device: "mps"
 seed: 42
 
 ########################################     Model configuration parameters     ########################################
-#model_id: "mistralai/Mistral-7B-v0.3"
-#quantization: 4bit
-
-model_id: "/Users/enricosimionato/Desktop/Redundancy-Hunter/src/experiments/models/gpt-neo-1.3B"
-#quantization: 4bit
+model_id: "mistralai/Mistral-7B-v0.3"
+dtype: "float16"
 
 ########################################   Tokenizer configuration parameters   ########################################
-#tokenizer_id: "mistralai/Mistral-7B-v0.3"
-tokenizer_id: "EleutherAI/gpt-neo-1.3B"
+tokenizer_id: "mistralai/Mistral-7B-v0.3"
 
 ########################################       Analysis target parameters       ########################################
-#targets:
-#    - ["block_index", "mlp", "gate_proj"]
-#    - ["block_index", "mlp", "up_proj"]
-#    - ["block_index", "mlp", "down_proj"]
-#num_layers: 32
-
 targets:
-    - ["block_index", "mlp", "c_fc"]
-    - ["block_index", "mlp", "c_proj"]
-num_layers: 24
+    - ["block_index", "mlp", "gate_proj"]
+    - ["block_index", "mlp", "up_proj"]
+    - ["block_index", "mlp", "down_proj"]
+num_layers: 32
 
 ########################################        Visualization parameters        ########################################
-figure_size: [50, 50]
+figure_size: [40, 40]
 
 ######################################## Layers replacement redundancy analysis ########################################
 benchmark_ids:
     - "hellaswag"
-#    - "truthfulqa_mc1"
-#    - "arc_challenge"
 evaluation_args:
-    truthfulqa_mc1:
-        batch_size: 32
-    arc_challenge:
-        batch_size: 32
     hellaswag:
         batch_size: 32
 
 replaced_block_index: 25
+replacing_block_index: 25
 
 ########################################         Sorted layers analysis         ########################################
-zero_threshold: 0.001
-batch_size: 2
-store_interval: 24
