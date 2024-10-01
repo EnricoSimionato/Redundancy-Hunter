@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
+import copy
 import gc
 import os
 from typing import Any, override
@@ -10,15 +11,18 @@ import numpy as np
 
 import torch
 
-from exporch import Config, get_available_device
+import transformers
+
+from exporch import Config, get_available_device, evaluate_model_on_benchmark
 from exporch.utils.causal_language_modeling import load_model_for_causal_lm
 from exporch.utils.plot_utils import plot_heatmap_with_additional_row_column, plot_heatmap
 
 from redhunter.analysis.analysis_utils import AnalysisTensorDict, AnalysisTensorWrapper, extract_based_on_path
 from redhunter.analysis.delta_layers_rank_analysis import compute_delta_matrices
+from redhunter.analysis.layer_replacement_analysis_utils import LayerReplacingModelWrapper
 from redhunter.analysis_experiment import AnalysisExperiment
 
-from redhunter.analysis.sorted_layers_compression_analysis_utils import sort_rows, sort_columns
+from redhunter.analysis.sorted_layers_compression_analysis_utils import sort_columns, sort_rows
 
 
 class SortedLayersCompressionAnalysis(AnalysisExperiment):
@@ -26,7 +30,7 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
     Class to perform the analysis of the sorted layers rank.
     """
 
-    mandatory_keys = ["num_layers"]
+    mandatory_keys = ["num_layers", "benchmark_id"]
 
     def __init__(
             self,
@@ -57,9 +61,9 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
         """
 
         self._compute_sorted_layers_deltas()
-        self._process_layer_deltas()
         self.store_data()
 
+    # TODO problems with the storage of the wrappers, they are too huge
     def _compute_sorted_layers_deltas(
             self
     ) -> None:
@@ -67,14 +71,16 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
         Computes the difference between the layers in a block and the sorted layers in the other block.
         """
 
-        gc.collect()
         config = self.config
         verbose = config.get_verbose()
+        device_str = config.get("device") if config.contains("device") else "cpu"
+        device = get_available_device(device_str)
         store_interval = config.get("store_interval") if config.contains("store_interval") else 10
 
         if self.get_data() is not None:
             # Loading the data
-            original_tensor_wrappers, sorted_layers_deltas, objective_function_stats_dict = self.data
+            original_tensor_wrappers, sorted_layers_deltas, objective_function_stats_dict = self.get_data()
+            model = None
         else:
             # Initializing the data structures
             original_tensor_wrappers = AnalysisTensorDict()
@@ -82,7 +88,9 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
             objective_function_stats_dict = {}
 
             # Loading the model
+            config.set("device", "cpu")
             model = load_model_for_causal_lm(config)
+            config.set("device", device_str)
 
             # Extracting the layers to analyze
             extract_based_on_path(
@@ -98,15 +106,14 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
             original_tensor_wrappers.set_layer_paths_configurations_to_analyze(self.get_experiments_configurations())
 
             # Storing the data
-            #self.set_data((original_tensor_wrappers, sorted_layers_deltas, objective_function_stats_dict))
-            print(original_tensor_wrappers)
-            #self.store_data()
+            self.set_data((original_tensor_wrappers, sorted_layers_deltas, objective_function_stats_dict))
+            self.store_data()
 
         # Iterating over the remaining configurations that have to be analyzed
         remaining_configurations_to_analyze = original_tensor_wrappers.get_layer_paths_configurations_to_analyze()
         self.process_tensor_wrappers(original_tensor_wrappers)
         configurations_to_remove = []
-        gc.collect()
+
         for configurations_index, configuration_to_analyze in enumerate(remaining_configurations_to_analyze):
             self.log(f"Analyzing the configuration: {configuration_to_analyze}")
             print(f"Analyzing the configuration: {configuration_to_analyze}")
@@ -118,6 +125,7 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
             # Sorting the rows/columns of a layer based minimizing a certain metrics given a couple of transformer blocks
             sorting_axes = [1 if index == len(layers_in_block_2) - 1 else 0 for index in range(len(layers_in_block_2))]
             sorting_indices, objective_function_stats = self.compute_indices_sorting(layers_in_block_1, layers_in_block_2, sorting_axes)
+            #objective_function_stats = {"abc": 1} # TESTING
             self.log(f"Sorting indices computed.")
             self.log(f"Sorting indices: {sorting_indices}")
             self.log(f"Objective function stats: {objective_function_stats}")
@@ -125,6 +133,7 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
             # Using the ordering to sort the vectors in the matrices of block 2
             sorted_layers_in_block_2 = self.sort_elements_in_layers(layers_in_block_2, sorting_indices, sorting_axes)
             self.log(f"Layers sorted.")
+            #sorted_layers_in_block_2 = layers_in_block_2
 
             # Subtracting the layers of block and the sorted layers of another block
             delta_matrices = compute_delta_matrices(layers_in_block_1, sorted_layers_in_block_2)
@@ -137,25 +146,40 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
 
             key = (tuple(tuple(layer.get_path()) for layer in layers_in_block_1), tuple(tuple(layer.get_path()) for layer in layers_in_block_2))
             sorted_layers_deltas.set_tensor(key, delta_matrices)
+
+            # Preparing the model for evaluation
+            results, model = self.evaluate_model(
+                model,
+                self.get_compressed_weights_mapping(
+                    configuration_to_analyze,
+                    layers_in_block_1,
+                    layers_in_block_2,
+                    sorted_layers_in_block_2,
+                    delta_matrices
+                ),
+                benchmark_id=config.get("benchmark_id"),
+                device=device_str
+            )
+
+            objective_function_stats.update(results)
             objective_function_stats_dict[key] = objective_function_stats
+            self.log(f"Performance dictionary updated with the results.")
 
             # Storing the data
-            #self.set_data((original_tensor_wrappers, sorted_layers_deltas, objective_function_stats_dict))
+            self.set_data((original_tensor_wrappers, sorted_layers_deltas, objective_function_stats_dict))
             configurations_to_remove.append(configuration_to_analyze)
             if (configurations_index + 1) % store_interval == 0:
-                #self.store_data()
+                self.store_data()
                 # Removing the configurations that have been analyzed
                 original_tensor_wrappers.remove_layer_paths_configuration_to_analyze(configurations_to_remove)
                 configurations_to_remove = []
 
-            gc.collect()
-
         # Storing the data
-        #self.set_data((original_tensor_wrappers, sorted_layers_deltas, objective_function_stats_dict))
-        self.set_data((None, None, objective_function_stats_dict))
+        self.set_data((original_tensor_wrappers, sorted_layers_deltas, objective_function_stats_dict))
         self.store_data()
         original_tensor_wrappers.remove_layer_paths_configuration_to_analyze(configurations_to_remove)
-        self.log("All configurations analyzed and all data stored.")
+        self.log("All configurations analyzed and all data stored.\nAnalysis completed.")
+        print("Analysis completed.")
 
     def get_experiments_configurations(
             self
@@ -232,7 +256,7 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
             self,
             layers_in_block: list[AnalysisTensorWrapper],
             sorting_indices_list: list[list[int]] | list[int],
-            axes: list[int],
+            axes: list[int]
     ) -> list[AnalysisTensorWrapper]:
         """
         Sorts the elements in the layers based on a list of indices.
@@ -286,14 +310,88 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
 
         return sorted_layers
 
-    def _process_layer_deltas(
-            self
-    ) -> None:
+    @abstractmethod
+    def get_compressed_weights_mapping(
+            self,
+            configuration_to_analyze:  list[list[list[str]]],
+            layers_in_block_1: list[AnalysisTensorWrapper],
+            layers_in_block_2: list[AnalysisTensorWrapper],
+            sorted_layers_in_block_2: list[AnalysisTensorWrapper],
+            delta_matrices: list[AnalysisTensorWrapper]
+    ) -> dict[tuple[str], torch.Tensor]:
         """
-        Processes the deltas of the layers to compute the quantities needed to perform the analysis.
+        Returns the compressed weights.
+
+        Args:
+            configuration_to_analyze (list[list[list[str]]]):
+                The configuration to analyze.
+            layers_in_block_1 (list[AnalysisTensorWrapper]):
+                The list of layers in block 1.
+            layers_in_block_2 (list[AnalysisTensorWrapper]):
+                The list of layers in block 2.
+            sorted_layers_in_block_2 (list[AnalysisTensorWrapper]):
+                The list of sorted layers in block 2.
+            delta_matrices (list[AnalysisTensorWrapper]):
+                The list of delta matrices.
+
+        Returns:
+            dict[tuple(str), torch.Tensor]:
+                The compressed weights.
         """
 
-        pass
+        return {}
+
+    def evaluate_model(
+            self,
+            model: [torch.nn.Module | transformers.AutoModel | transformers.PreTrainedModel],
+            tokenizer: [transformers.AutoTokenizer | transformers.PreTrainedTokenizer],
+            mapping_compressed_layers: dict,
+            benchmark_id: str,
+            device: str
+    ) -> tuple[dict, torch.nn.Module | transformers.AutoModel | transformers.PreTrainedModel]:
+        """
+        Evaluates the model on a benchmark.
+
+        Args:
+            model (torch.nn.Module | transformers.AutoModel | transformers.PreTrainedModel):
+                The model to evaluate.
+            tokenizer (transformers.AutoTokenizer | transformers.PreTrainedTokenizer):
+                The tokenizer to use.
+            mapping_compressed_layers (dict):
+                The mapping of the compressed layers.
+            benchmark_id (str):
+                The id of the benchmark to evaluate the model on.
+            device (str):
+                The device where the model has to be evaluated.
+
+        Returns:
+            dict:
+                The results of the evaluation.
+            torch.nn.Module | transformers.AutoModel | transformers.PreTrainedModel:
+                The loaded original model.
+        """
+
+        if model is None:
+            model = load_model_for_causal_lm(self.config)
+
+        model.to(device)
+        model_wrapper = LayerReplacingModelWrapper(
+            model,
+            mapping_compressed_layers
+        )
+
+        self.log("Model prepared for evaluation.")
+
+        # Evaluating the processed model
+        self.log(f"Starting the evaluation of the model on the device {model_wrapper.get_model().device}.")
+        results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id, {}, device)
+        #results = {self.config.get("benchmark_id"): {"acc_norm,none": 0.5}}  # Testing
+        self.log(f"Results of the modified model: {results}.")
+        print(f"Results of the modified model: {results}.")
+
+        model_wrapper.reset_replacement()
+
+        return results, model_wrapper.get_model()
 
     def _plot_results(
             self,
@@ -521,6 +619,78 @@ class ResettableElementsSortedLayersCompressionAnalysisWithConcatenatedMatrices(
         })
 
         return sorting_indices, sorting_stats
+
+    @override
+    def get_compressed_weights_mapping(
+            self,
+            configuration_to_analyze: list[list[list[str]]],
+            layers_in_block_1: list[AnalysisTensorWrapper],
+            layers_in_block_2: list[AnalysisTensorWrapper],
+            sorted_layers_in_block_2: list[AnalysisTensorWrapper],
+            delta_matrices: list[AnalysisTensorWrapper]
+    ) -> dict[tuple[str, ...], torch.Module]:
+        """
+        Returns the compressed weights.
+
+        Args:
+            configuration_to_analyze (list[list[list[str]]]):
+                The configuration to analyze.
+            layers_in_block_1 (list[AnalysisTensorWrapper]):
+                The list of layers in block 1.
+            layers_in_block_2 (list[AnalysisTensorWrapper]):
+                The list of layers in block 2.
+            sorted_layers_in_block_2 (list[AnalysisTensorWrapper]):
+                The list of sorted layers in block 2.
+            delta_matrices (list[AnalysisTensorWrapper]):
+                The list of delta matrices.
+
+        Returns:
+            dict[tuple(str), torch.Tensor]:
+                The compressed weights.
+        """
+
+        mapping = {}
+        for layer_path in configuration_to_analyze[1]:
+            layer_index = configuration_to_analyze[1].index(layer_path)
+            layer = copy.deepcopy(layers_in_block_2[layer_index].get_layer())
+            try:
+                layer.weight.data = layers_in_block_1[layer_index].get_tensor().data + self.threshold_zeros(delta_matrices[layer_index].get_tensor().data, self.config.get("zero_threshold"))
+            except AttributeError:
+                self.log(f"Layer {layer.get_label()} does not have a weight attribute.")
+                print(f"Layer {layer.get_label()} does not have a weight attribute.")
+            # TODO for now we are not considering the bias
+            """
+            try:
+                layer.bias = layers_in_block_1[layer_index].get_tensor() + self.threshold_zeros(delta_matrices[layer_index].get_tensor())
+            except AttributeError:
+                self.log(f"Layer {layer.get_label()} does not have a bias attribute.")
+                print(f"Layer {layer.get_label()} does not have a bias attribute.")
+            """
+
+            mapping[tuple(layer_path)] = layer
+
+        return mapping
+
+    @staticmethod
+    def threshold_zeros(
+            tensor: torch.Tensor,
+            threshold: float = 1e-6
+    ) -> torch.Tensor:
+        """
+        Returns the tensor with the elements bigger than the threshold set to zero.
+
+        Args:
+            tensor (torch.Tensor):
+                The tensor to threshold.
+            threshold (float):
+                The threshold to apply.
+
+        Returns:
+            torch.Tensor:
+                The tensor with the elements bigger than the threshold set to zero.
+        """
+
+        return tensor * (torch.abs(tensor) > threshold)
 
     @override
     def get_formatted_results_to_plot(

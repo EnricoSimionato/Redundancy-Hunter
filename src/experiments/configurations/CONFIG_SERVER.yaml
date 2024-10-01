@@ -1,8 +1,9 @@
 ########################################    General configuration parameters    ########################################
 path_to_storage: "src/experiments/results"
 
-experiment_type: "all_layer_couples_displacement_based_replacement_redundancy_analysis"
 #experiment_type: "single_null_layers_replacement_redundancy_analysis"
+#experiment_type: "all_layer_couples_displacement_based_replacement_redundancy_analysis"
+experiment_type: "resettable_elements_sorted_layers_compression_analysis_with_concatenated_matrices"
 
 version: 1
 
@@ -21,14 +22,15 @@ tokenizer_id: "mistralai/Mistral-7B-v0.3"
 
 ########################################       Analysis target parameters       ########################################
 targets:
-    - ["block_index", "mlp"]
-#    - ["block_index", "mlp", "gate_proj"]
-#    - ["block_index", "mlp", "up_proj"]
-#    - ["block_index", "mlp", "down_proj"]
+#    - ["block_index", "mlp"]
+    - ["block_index", "mlp", "gate_proj"]
+    - ["block_index", "mlp", "up_proj"]
+    - ["block_index", "mlp", "down_proj"]
 num_layers: 32
 
 ########################################        Visualization parameters        ########################################
-figure_size: [40, 15]
+#figure_size: [40, 15]
+figure_size: [40, 40]
 
 ######################################## Layers replacement redundancy analysis ########################################
 benchmark_ids:
@@ -39,7 +41,9 @@ evaluation_args:
     gsm8k:
         batch_size: 16
 
-replaced_block_index: 25
-replacing_block_index: 25
-
 ########################################         Sorted layers analysis         ########################################
+zero_threshold: 0.001
+batch_size: 8
+store_interval: 32
+
+benchmark_id: "hellaswag"
