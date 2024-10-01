@@ -1,8 +1,10 @@
 ########################################    General configuration parameters    ########################################
 path_to_storage: "src/experiments/results"
 
-#experiment_type: "specific_replaced_layer_replacement_redundancy_analysis"
-experiment_type: "single_null_layers_replacement_redundancy_analysis"
+experiment_type: "all_layer_couples_displacement_based_replacement_redundancy_analysis"
+#experiment_type: "single_null_layers_replacement_redundancy_analysis"
+
+version: 1
 
 #just_plot: True
 
