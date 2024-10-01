@@ -90,6 +90,7 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
             config.set("device", "cpu")
             model = load_model_for_causal_lm(config)
             config.set("device", device_str)
+            tokenizer = transformers.AutoTokenizer.from_pretrained(config.get("model_id"))
 
             # Extracting the layers to analyze
             extract_based_on_path(
@@ -149,6 +150,7 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
             # Preparing the model for evaluation
             results, model = self.evaluate_model(
                 model,
+                tokenizer,
                 self.get_compressed_weights_mapping(
                     configuration_to_analyze,
                     layers_in_block_1,
