@@ -32,7 +32,7 @@ figure_size: [40, 15]
 
 ######################################## Layers replacement redundancy analysis ########################################
 benchmark_ids:
-    - "gsm8k"
+    - "hellaswag"
 evaluation_args:
     hellaswag:
         batch_size: 32
