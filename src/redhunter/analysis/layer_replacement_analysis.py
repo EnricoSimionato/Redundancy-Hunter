@@ -141,6 +141,8 @@ class LayerReplacementAnalysis(AnalysisExperiment):
             self.store_data()
             self.log(f"Stored data up to benchmark {benchmark_id}.")
 
+        self._postprocess_results()
+
         self.log("All data stored.")
 
         self.log("The analysis has been completed.")
@@ -348,7 +350,8 @@ class LayerReplacementAnalysis(AnalysisExperiment):
 
         # Helper function to extract tuples from string
         def extract_tuples(s):
-            return re.findall(r"\('(.*?)', '(.*?)', '(.*?)'\)", s)
+            # Match tuples of the form ('element1', 'element2', ...) with any number of elements
+            return re.findall(r"\('(.*?)'(?:, '(.*?)')*\)", s)
 
         # Helper function to extract the first number found in a string
         def extract_first_number(s):
@@ -535,6 +538,7 @@ class AllLayerCouplesReplacementAnalysis(LayerReplacementAnalysis):
     It performs the analysis by replacing all the couples of layers.
     """
 
+    @override
     def get_layers_replacement_mapping(
             self
     ) -> list[dict[tuple, tuple]]:
@@ -587,12 +591,13 @@ class AllLayerCouplesReplacementAnalysis(LayerReplacementAnalysis):
         self.log("The results have been post-processed and stored.")
 
 
-class AllLayerCouplesDisplacementBasedReplacementAnalysis(LayerReplacementAnalysis):
+class AllLayerCouplesDisplacementBasedReplacementAnalysis(AllLayerCouplesReplacementAnalysis):
     """
     The class for the layer replacement analysis experiments.
     It performs the analysis by replacing all the couples of layers following an order based on a displacement.
     """
 
+    @override
     def get_layers_replacement_mapping(
             self
     ) -> list[dict[tuple, tuple]]:
@@ -619,34 +624,6 @@ class AllLayerCouplesDisplacementBasedReplacementAnalysis(LayerReplacementAnalys
             for displacement in displacements
             for i in range(max(-displacement, 0), min(num_layers - displacement, num_layers))
     ]
-
-    @override
-    def _postprocess_results(
-            self
-    ) -> None:
-        """
-        Post-processes the results of the analysis before plotting them.
-        """
-
-        destination_layer_path_source_layer_path_mapping_list, performance_dict = self.data
-
-        self.log(f"Post-processing the results...")
-        targets_lists = self.config.get("targets")
-        num_layers = self.config.get("num_layers")
-        redundant_mappings  = [
-            {
-                tuple(el if el != "block_index" else f"{i}" for el in targets):
-                    tuple(el if el != "block_index" else f"{j}" for el in targets) for targets in targets_lists
-            } for i in range(num_layers) for j in range(num_layers) if i == j
-        ]
-        for benchmark_id in performance_dict.keys():
-            for mapping in redundant_mappings:
-                performance_dict[benchmark_id][self.get_performance_dict_key_from_mapping(mapping)] = performance_dict[benchmark_id][("original", "original")]
-
-        self.data = (destination_layer_path_source_layer_path_mapping_list, performance_dict)
-
-        self.store_data()
-        self.log("The results have been post-processed and stored.")
 
 
 class SpecificDisplacementLayerReplacementAnalysis(AllLayerCouplesReplacementAnalysis):

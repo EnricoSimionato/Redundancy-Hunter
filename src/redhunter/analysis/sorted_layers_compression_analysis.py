@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from abc import abstractmethod
 import copy
-import gc
 import os
 from typing import Any, override
 from tqdm import tqdm
