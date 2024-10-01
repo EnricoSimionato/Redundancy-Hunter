@@ -19,9 +19,10 @@ tokenizer_id: "mistralai/Mistral-7B-v0.3"
 
 ########################################       Analysis target parameters       ########################################
 targets:
-    - ["block_index", "mlp", "gate_proj"]
-    - ["block_index", "mlp", "up_proj"]
-    - ["block_index", "mlp", "down_proj"]
+    - ["block_index", "mlp"]
+#    - ["block_index", "mlp", "gate_proj"]
+#    - ["block_index", "mlp", "up_proj"]
+#    - ["block_index", "mlp", "down_proj"]
 num_layers: 32
 
 ########################################        Visualization parameters        ########################################
