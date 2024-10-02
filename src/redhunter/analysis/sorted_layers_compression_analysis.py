@@ -87,8 +87,8 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
             objective_function_stats_dict = {}
 
             # Loading the model
-            config.set("device", "cpu")
             model = load_model_for_causal_lm(config)
+            model.to("cpu")
 
             # Extracting the layers to analyze
             extract_based_on_path(
@@ -112,7 +112,6 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
         self.process_tensor_wrappers(original_tensor_wrappers)
         configurations_to_remove = []
 
-        config.set("device", device_str)
         tokenizer = transformers.AutoTokenizer.from_pretrained(config.get("model_id"))
 
         for configurations_index, configuration_to_analyze in enumerate(remaining_configurations_to_analyze):
@@ -150,6 +149,7 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
             sorted_layers_deltas.set_tensor(key, delta_matrices)
 
             # Preparing the model for evaluation
+            benchmark_id = config.get("benchmark_id")
             results, model = self.evaluate_model(
                 model,
                 tokenizer,
@@ -160,7 +160,8 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
                     sorted_layers_in_block_2,
                     delta_matrices
                 ),
-                benchmark_id=config.get("benchmark_id"),
+                benchmark_id=benchmark_id,
+                benchmark_evaluation_args=config.get("evaluation_args")[benchmark_id] if config.contains("benchmark_evaluation_args") else {},
                 device=device_str
             )
 
@@ -350,6 +351,7 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
             tokenizer: [transformers.AutoTokenizer | transformers.PreTrainedTokenizer],
             mapping_compressed_layers: dict,
             benchmark_id: str,
+            benchmark_evaluation_args: dict,
             device: str
     ) -> tuple[dict, torch.nn.Module | transformers.AutoModel | transformers.PreTrainedModel]:
         """
@@ -364,6 +366,8 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
                 The mapping of the compressed layers.
             benchmark_id (str):
                 The id of the benchmark to evaluate the model on.
+            benchmark_evaluation_args (dict):
+                The arguments to pass to the evaluation function of the benchmark.
             device (str):
                 The device where the model has to be evaluated.
 
@@ -382,19 +386,20 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
             model,
             mapping_compressed_layers
         )
-
         self.log("Model prepared for evaluation.")
 
         # Evaluating the processed model
         self.log(f"Starting the evaluation of the model on the device {model_wrapper.get_model().device}.")
-        results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id, {}, device)
-        #results = {self.config.get("benchmark_id"): {"acc_norm,none": 0.5}}  # Testing
+        results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id, benchmark_evaluation_args, device)
+        #results = {self.config.get("benchmark_id"): {"acc_norm,none": 0.5}} # Testing
         self.log(f"Results of the modified model: {results}.")
         print(f"Results of the modified model: {results}.")
 
         model_wrapper.reset_replacement()
+        model = model_wrapper.get_model().cpu()
+        print(model.device)
 
-        return results, model_wrapper.get_model()
+        return results, model
 
     def _plot_results(
             self,
@@ -615,11 +620,15 @@ class ResettableElementsSortedLayersCompressionAnalysisWithConcatenatedMatrices(
 
         final_delta_concatenated_matrices = concatenated_matrix_1 - sort_columns(concatenated_matrix_2, sorting_indices)
 
+        del concatenated_matrix_1, concatenated_matrix_2
+
         sorting_stats.update({
             "final_sorting_resettable_elements": torch.sum(torch.abs(final_delta_concatenated_matrices) < zero_threshold).item(),
             "manhattan_norm_final_sorting_resettable_elements": torch.sum(torch.abs(final_delta_concatenated_matrices) * (torch.abs(final_delta_concatenated_matrices) < zero_threshold)).item(),
             "frobenius_norm_final_sorting_resettable_elements": torch.norm(final_delta_concatenated_matrices * (torch.abs(final_delta_concatenated_matrices) < zero_threshold)).item()
         })
+
+        del final_delta_concatenated_matrices
 
         return sorting_indices, sorting_stats
 
