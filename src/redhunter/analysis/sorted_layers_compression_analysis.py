@@ -161,7 +161,7 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
                     delta_matrices
                 ),
                 benchmark_id=benchmark_id,
-                benchmark_evaluation_args=config.get("evaluation_args")[benchmark_id] if config.contains("benchmark_evaluation_args") else {},
+                benchmark_evaluation_args=config.get("evaluation_args")[benchmark_id] if config.contains("evaluation_args") else {},
                 device=device_str
             )
 
@@ -390,6 +390,7 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
 
         # Evaluating the processed model
         self.log(f"Starting the evaluation of the model on the device {model_wrapper.get_model().device}.")
+        self.log(f"Evaluation arguments: {benchmark_evaluation_args}.")
         results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id, benchmark_evaluation_args, device)
         #results = {self.config.get("benchmark_id"): {"acc_norm,none": 0.5}} # Testing
         self.log(f"Results of the modified model: {results}.")
