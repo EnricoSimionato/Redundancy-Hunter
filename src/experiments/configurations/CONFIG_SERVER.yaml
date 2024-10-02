@@ -2,10 +2,10 @@
 path_to_storage: "src/experiments/results"
 
 #experiment_type: "single_null_layers_replacement_redundancy_analysis"
-#experiment_type: "all_layer_couples_displacement_based_replacement_redundancy_analysis"
-experiment_type: "resettable_elements_sorted_layers_compression_analysis_with_concatenated_matrices"
+experiment_type: "all_layer_couples_displacement_based_replacement_redundancy_analysis"
+#experiment_type: "resettable_elements_sorted_layers_compression_analysis_with_concatenated_matrices"
 
-version: 1
+version: 2
 
 #just_plot: True
 
@@ -34,7 +34,8 @@ figure_size: [40, 40]
 
 ######################################## Layers replacement redundancy analysis ########################################
 benchmark_ids:
-    - "hellaswag"
+#    - "hellaswag"
+    - "gsm8k"
 evaluation_args:
     hellaswag:
         batch_size: 32
@@ -42,8 +43,8 @@ evaluation_args:
         batch_size: 16
 
 ########################################         Sorted layers analysis         ########################################
-zero_threshold: 0.001
-batch_size: 4
-store_interval: 32
+#zero_threshold: 0.001
+#batch_size: 4
+#store_interval: 32
 
-benchmark_id: "hellaswag"
+#benchmark_id: "hellaswag"
