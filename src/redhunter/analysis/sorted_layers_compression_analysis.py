@@ -88,7 +88,7 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
 
             # Loading the model
             model = load_model_for_causal_lm(config)
-            model.to("cpu")
+            model.cpu()
 
             # Extracting the layers to analyze
             extract_based_on_path(
@@ -629,6 +629,7 @@ class ResettableElementsSortedLayersCompressionAnalysisWithConcatenatedMatrices(
         })
 
         del final_delta_concatenated_matrices
+        torch.cuda.empty_cache()
 
         return sorting_indices, sorting_stats
 
