@@ -77,9 +77,11 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
         store_interval = config.get("store_interval") if config.contains("store_interval") else 10
 
         if self.get_data() is not None:
+            self.log("Trying to load previous results...")
             # Loading the data
             original_tensor_wrappers, sorted_layers_deltas, objective_function_stats_dict = self.get_data()
             model = None
+            self.log("Previous results loaded.")
         else:
             # Initializing the data structures
             original_tensor_wrappers = AnalysisTensorDict()
