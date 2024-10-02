@@ -12,7 +12,8 @@ import torch
 
 import transformers
 
-from exporch import Config, get_available_device, evaluate_model_on_benchmark
+from exporch import Config, get_available_device
+from exporch.experiment import evaluate_model_on_benchmark
 from exporch.utils.causal_language_modeling import load_model_for_causal_lm
 from exporch.utils.plot_utils import plot_heatmap_with_additional_row_column, plot_heatmap
 
@@ -73,7 +74,6 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
         config = self.config
         verbose = config.get_verbose()
         device_str = config.get("device") if config.contains("device") else "cpu"
-        device = get_available_device(device_str)
         store_interval = config.get("store_interval") if config.contains("store_interval") else 10
 
         if self.get_data() is not None:
@@ -89,8 +89,6 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
             # Loading the model
             config.set("device", "cpu")
             model = load_model_for_causal_lm(config)
-            config.set("device", device_str)
-            tokenizer = transformers.AutoTokenizer.from_pretrained(config.get("model_id"))
 
             # Extracting the layers to analyze
             extract_based_on_path(
@@ -114,6 +112,9 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
         self.process_tensor_wrappers(original_tensor_wrappers)
         configurations_to_remove = []
 
+        config.set("device", device_str)
+        tokenizer = transformers.AutoTokenizer.from_pretrained(config.get("model_id"))
+
         for configurations_index, configuration_to_analyze in enumerate(remaining_configurations_to_analyze):
             self.log(f"Analyzing the configuration: {configuration_to_analyze}")
             print(f"Analyzing the configuration: {configuration_to_analyze}")
@@ -132,6 +133,7 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
 
             # Using the ordering to sort the vectors in the matrices of block 2
             sorted_layers_in_block_2 = self.sort_elements_in_layers(layers_in_block_2, sorting_indices, sorting_axes)
+            #sorted_layers_in_block_2 = copy.deepcopy(layers_in_block_2)
             self.log(f"Layers sorted.")
             #sorted_layers_in_block_2 = layers_in_block_2
 
@@ -141,7 +143,7 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
             # Processing the delta matrices of the layers based on the specific operations that the analysis performs
             for delta_matrix in delta_matrices:
                 self.process_tensor_wrappers(delta_matrix)
-            # objective_function_stats = {"final_sorting_resettable_elements": 42, "initial_sorting_resettable_elements": 2018} # TESTING
+            #objective_function_stats = {"final_sorting_resettable_elements": 42, "initial_sorting_resettable_elements": 2018} # TESTING
             self.log("Delta matrices computed and processed.")
 
             key = (tuple(tuple(layer.get_path()) for layer in layers_in_block_1), tuple(tuple(layer.get_path()) for layer in layers_in_block_2))
