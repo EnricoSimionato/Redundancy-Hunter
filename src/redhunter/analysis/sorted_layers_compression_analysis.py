@@ -44,7 +44,8 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
         self.x_title = "Index of the block"
         self.y_title = "Index of the block"
 
-    def _perform_analysis(
+    @override
+    def _run_experiment(
             self
     ) -> None:
         """

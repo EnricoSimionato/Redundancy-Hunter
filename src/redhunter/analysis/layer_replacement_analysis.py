@@ -6,14 +6,22 @@ import gc
 import logging
 import os
 import re
+from tqdm import tqdm
 from typing import Any, override
 
+import math
 import numpy as np
+
+import torch
+import pytorch_lightning as pl
+
+import transformers
 
 from exporch import Config, get_available_device
 
 from exporch.utils.causal_language_modeling import load_model_for_causal_lm, load_tokenizer_for_causal_lm
 from exporch.experiment import benchmark_id_metric_name_mapping, evaluate_model_on_benchmark
+from exporch.utils.general_framework_utils import get_datamodule
 from exporch.utils.plot_utils.heatmap import plot_heatmap
 
 from redhunter.analysis.layer_replacement_analysis_utils import LayerReplacingModelWrapper, \
@@ -28,7 +36,8 @@ class LayerReplacementAnalysis(AnalysisExperiment):
 
     mandatory_keys = ["num_layers"]
 
-    def _perform_analysis(
+    @override
+    def _run_experiment(
             self
     ) -> None:
         """
@@ -88,9 +97,14 @@ class LayerReplacementAnalysis(AnalysisExperiment):
         for benchmark_id in remaining_destination_layer_path_source_layer_path_mapping_list.keys():
             logging.info("Evaluating the original model")
             print("Evaluating the original model")
+
+            # Defining the evaluation parameters
+            benchmark_evaluation_args = evaluation_args[benchmark_id]
+            self.log(f"Chosen evaluation args: {benchmark_evaluation_args}")
+
             if ("original", "original") not in performance_dict[benchmark_id].keys():
-                original_model_results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id,
-                                                      evaluation_args[benchmark_id], device)
+                original_model_results = self._evaluate_model(
+                    model_wrapper.get_model(), tokenizer, benchmark_id, benchmark_evaluation_args, device)
                 #original_model_results = {benchmark_id: {"acc_norm,none": 0.7}} # Testing
                 performance_dict[benchmark_id][("original", "original")] = original_model_results
                 self.log(f"Results of the original model: {original_model_results}")
@@ -106,14 +120,10 @@ class LayerReplacementAnalysis(AnalysisExperiment):
                     destination_layer_path_source_layer_path_mapping)
                 self.log(f"Layers replaced.")
 
-                # Defining the evaluation parameters
-                benchmark_evaluation_args = evaluation_args[benchmark_id]
-                self.log(f"Chosen evaluation args: {benchmark_evaluation_args}")
-
                 # Evaluating the model
                 self.log(f"Starting the evaluation of the model on the device {model_wrapper.get_model().device}.")
-                results = evaluate_model_on_benchmark(model_wrapper.get_model(), tokenizer, benchmark_id,
-                                                      benchmark_evaluation_args, device)
+                results = self._evaluate_model(
+                    model_wrapper.get_model(), tokenizer, benchmark_id, benchmark_evaluation_args, device)
                 #results = {benchmark_id: {"acc_norm,none": int(list(destination_layer_path_source_layer_path_mapping.keys())[0][0])}} # Testing
                 self.log(f"Results of the modified model: {results}")
                 print(f"Results of the modified model: {results}")
@@ -140,8 +150,6 @@ class LayerReplacementAnalysis(AnalysisExperiment):
             self.log(f"Trying to store the data for benchmark {benchmark_id}...")
             self.store_data()
             self.log(f"Stored data up to benchmark {benchmark_id}.")
-
-        self._postprocess_results()
 
         self.log("All data stored.")
 
@@ -237,6 +245,53 @@ class LayerReplacementAnalysis(AnalysisExperiment):
 
         return str(keys), str(values)
 
+    def _evaluate_model(
+            self,
+            model: [torch.nn.Module | transformers.AutoModel | transformers.PreTrainedModel],
+            tokenizer: [transformers.AutoTokenizer | transformers.PreTrainedTokenizer],
+            benchmark_id: str,
+            benchmark_evaluation_args: dict,
+            device: str
+    ) -> dict[str, dict[str, float]]:
+        """
+        Evaluates the model on a benchmark.
+
+        Args:
+            model (torch.nn.Module | transformers.AutoModel | transformers.PreTrainedModel):
+                The model to be evaluated.
+            tokenizer (transformers.AutoTokenizer | transformers.PreTrainedTokenizer):
+                The tokenizer of the model.
+            benchmark_id (str):
+                The benchmark on which the model has to be evaluated.
+            benchmark_evaluation_args (dict):
+                The arguments to use in the benchmark.
+            device (str):
+                The device to use in the evaluation.
+
+        Returns:
+            dict[str, dict[str, float]]:
+                The dictionary containing the results of the evaluation.
+        """
+
+        return evaluate_model_on_benchmark(
+            model,
+            tokenizer,
+            benchmark_id,
+            benchmark_evaluation_args,
+            device
+        )
+
+    def _postprocess_results(
+            self
+    ) -> None:
+        """
+        Post-processes the results obtained from the analysis.
+        The performed analysis will depend on the specific subclass of Analysis
+        """
+
+        pass
+
+    @override
     def _plot_results(
             self,
             config: Config,
@@ -255,6 +310,9 @@ class LayerReplacementAnalysis(AnalysisExperiment):
         if data is None:
             self.log("The data must be provided to plot the results of the analysis.")
             raise ValueError("The data must be provided to plot the results of the analysis.")
+
+        # Post-processing the results if they have not been post-processed yet
+        self._postprocess_results()
 
         fig_size = config.get("figure_size") if config.contains("figure_size") else (36, 36)
         destination_layer_path_source_layer_path_mapping_list, performance_dict = data
@@ -446,6 +504,7 @@ class SingleNullLayersReplacementAnalysis(LayerReplacementAnalysis):
     It performs the analysis by replacing a single layer with a null layer.
     """
 
+    @override
     def get_layers_replacement_mapping(
             self
     ) -> list[dict[tuple, tuple]]:
@@ -469,6 +528,7 @@ class SingleNullLayersReplacementAnalysis(LayerReplacementAnalysis):
         ]
 
     @staticmethod
+    @override
     def wrap_model(
             model,
             *args,
@@ -627,7 +687,14 @@ class AllLayerCouplesDisplacementBasedReplacementAnalysis(AllLayerCouplesReplace
 
 
 class SpecificDisplacementLayerReplacementAnalysis(AllLayerCouplesReplacementAnalysis):
+    """
+    The class for the layer replacement analysis experiments with a specific displacement between the replaced and the
+    replacing layers.
+    """
+
     mandatory_keys = ["displacement"]
+
+    @override
     def get_layers_replacement_mapping(
             self
     ) -> list[dict[tuple, tuple]]:
@@ -654,6 +721,11 @@ class SpecificDisplacementLayerReplacementAnalysis(AllLayerCouplesReplacementAna
 
 
 class SubsequentLayerReplacementAnalysis(AllLayerCouplesReplacementAnalysis):
+    """
+    The class for the layer replacement analysis experiments. It performs the analysis by replacing subsequent layers.
+    """
+
+    @override
     def get_layers_replacement_mapping(
             self
     ) -> list[dict[tuple, tuple]]:
@@ -679,6 +751,11 @@ class SubsequentLayerReplacementAnalysis(AllLayerCouplesReplacementAnalysis):
 
 
 class PreviousLayerReplacementAnalysis(AllLayerCouplesReplacementAnalysis):
+    """
+    The class for the layer replacement analysis experiments. It performs the analysis by replacing previous layers.
+    """
+
+    @override
     def get_layers_replacement_mapping(
             self
     ) -> list[dict[tuple, tuple]]:
@@ -704,8 +781,14 @@ class PreviousLayerReplacementAnalysis(AllLayerCouplesReplacementAnalysis):
 
 
 class SpecificReplacedLayerReplacementAnalysis(AllLayerCouplesReplacementAnalysis):
+    """
+    The class for the layer replacement analysis experiments. It performs the analysis by replacing a specific layer with
+    all the other layers.
+    """
+
     mandatory_keys = ["replaced_block_index"]
 
+    @override
     def get_layers_replacement_mapping(
             self
     ) -> list[dict[tuple, tuple]]:
@@ -732,8 +815,14 @@ class SpecificReplacedLayerReplacementAnalysis(AllLayerCouplesReplacementAnalysi
 
 
 class SpecificReplacingLayerReplacementAnalysis(AllLayerCouplesReplacementAnalysis):
+    """
+    The class for the layer replacement analysis experiments. It performs the analysis by replacing all the layers with
+    a specific layer.
+    """
+
     mandatory_keys = ["replacing_block_index"]
 
+    @override
     def get_layers_replacement_mapping(
             self
     ) -> list[dict[tuple, tuple]]:
@@ -760,6 +849,12 @@ class SpecificReplacingLayerReplacementAnalysis(AllLayerCouplesReplacementAnalys
 
 
 class SameLayerCouplesReplacementAnalysis(LayerReplacementAnalysis):
+    """
+    The class for the layer replacement analysis experiments. It performs the analysis by replacing a layer with the
+    itself. It is a testing analysis.
+    """
+
+    @override
     def get_layers_replacement_mapping(
             self
     ) -> list[dict[tuple, tuple]]:
@@ -785,6 +880,12 @@ class SameLayerCouplesReplacementAnalysis(LayerReplacementAnalysis):
 
 
 class AllLayersReplacementAnalysis(LayerReplacementAnalysis):
+    """
+    The class for the layer replacement analysis experiments. It performs the analysis by replacing all the layers with
+    a given one.
+    """
+
+    @override
     def get_layers_replacement_mapping(
             self
     ) -> list[dict[tuple, tuple]]:
@@ -847,3 +948,129 @@ class AllLayersReplacementAnalysis(LayerReplacementAnalysis):
             formatted_destination_paths[benchmark_id] = [group[1:-1].replace("), (", ")\n(") for group in destination_paths[benchmark_id]]
 
         return formatted_source_paths, formatted_destination_paths, performance_arrays
+
+
+class PerplexityLayerReplacementAnalysis(AllLayerCouplesDisplacementBasedReplacementAnalysis):
+    """
+    The class for the layer replacement analysis experiments where models are compared based on their perplexity on a
+    benchmark.
+
+    Attributes:
+        benchmarks (dict[str, pl.LightningDataModule]):
+            The benchmarks to be used in the analysis
+    """
+
+    def __init__(
+            self,
+            *args,
+            **kwargs
+    ) -> None:
+        super().__init__(*args, **kwargs)
+
+        self.benchmarks = None
+
+
+    def initialize_benchmark(
+            self,
+            benchmark_id: str,
+            tokenizer: transformers.AutoTokenizer | transformers.PreTrainedTokenizer,
+            benchmarks_args: dict[str, Any]
+    ) -> None:
+        """
+        Initializes the benchmark to be used in the analysis.
+
+        Args:
+            benchmark_id (list[str]):
+                The benchmark to be initialized.
+            tokenizer (transformers.AutoTokenizer | transformers.PreTrainedTokenizer):
+                The tokenizer to be used in the benchmarks.
+            benchmarks_args (dict[str, dict[str, Any]]):
+                The arguments to be used in the benchmarks.
+        """
+
+        if self.benchmarks is None:
+            self.benchmarks = {}
+
+        benchmarks_args_copy = benchmarks_args.copy()
+        max_length = benchmarks_args_copy.pop("max_length") if "max_length" in benchmarks_args_copy.keys() else 512
+        self.benchmarks.update(
+            {benchmark_id: get_datamodule(
+                benchmark_id,
+                tokenizer,
+                max_length,
+                **benchmarks_args_copy)})
+
+    @override
+    def _evaluate_model(
+            self,
+            model: [torch.nn.Module | transformers.AutoModel | transformers.PreTrainedModel],
+            tokenizer: [transformers.AutoTokenizer | transformers.PreTrainedTokenizer],
+            benchmark_id: str,
+            benchmark_evaluation_args: dict,
+            device: str
+    ) -> dict[str, dict[str, float]]:
+        """
+        Evaluates the model on a benchmark computing the perplexity.
+
+        Args:
+            model (torch.nn.Module | transformers.AutoModel | transformers.PreTrainedModel):
+                The model to be evaluated.
+            tokenizer (transformers.AutoTokenizer | transformers.PreTrainedTokenizer):
+                The tokenizer of the model.
+            benchmark_id (str):
+                The benchmark on which the model has to be evaluated.
+            benchmark_evaluation_args (dict):
+                The arguments to use in the benchmark.
+            device (str):
+                The device to use in the evaluation.
+
+        Returns:
+            dict[str, dict[str, float]]:
+                The dictionary containing the results of the evaluation.
+                The structure of the dictionary is the following:
+                {
+                    benchmark_id: {
+                        f"{evaluation_metric_name}": perplexity
+                    }
+                }
+        """
+
+        if self.benchmarks is None or benchmark_id not in self.benchmarks.keys():
+            self.initialize_benchmark(benchmark_id, tokenizer, benchmark_evaluation_args)
+
+        model.eval()
+
+        datamodule = self.benchmarks[benchmark_id]
+        datamodule.setup()
+
+        # Moving model to GPU if available
+        device = get_available_device(device)
+        try:
+            model.to(device)
+        except Exception:
+            pass
+
+        # Computing loss over validation set
+        total_loss = 0.0
+        total_tokens = 0
+        val_loader = datamodule.val_dataloader()
+        with torch.no_grad():
+            for batch in tqdm(val_loader):
+                input_ids = batch["input_ids"].to(device)
+                attention_mask = batch["attention_mask"].to(device)
+                labels = batch["labels"].to(device)
+
+                # Performing the forward pass and computing the loss
+                outputs = model(input_ids, attention_mask=attention_mask, labels=labels)
+                loss = outputs.loss
+
+                total_loss += loss.item() * input_ids.size(0)
+                total_tokens += torch.sum(attention_mask).item()
+
+        # Computing perplexity
+        avg_loss = total_loss / total_tokens
+        perplexity = math.exp(avg_loss)
+
+        return {
+            f"{benchmark_id}": {"perplexity": perplexity}
+        }

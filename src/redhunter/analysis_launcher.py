@@ -13,7 +13,9 @@ from redhunter.analysis.layer_replacement_analysis import (
     SpecificReplacedLayerReplacementAnalysis,
     SpecificReplacingLayerReplacementAnalysis,
     SameLayerCouplesReplacementAnalysis,
-    AllLayersReplacementAnalysis
+    AllLayersReplacementAnalysis,
+
+    PerplexityLayerReplacementAnalysis
 )
 from redhunter.analysis.sorted_layers_compression_analysis import (
     ResettableElementsSortedLayersCompressionAnalysisWithConcatenatedMatrices
@@ -33,6 +35,7 @@ GeneralPurposeExperimentFactory.register({
     "same_layer_couples_replacement_redundancy_analysis": SameLayerCouplesReplacementAnalysis,
     "all_layers_replacement_redundancy_analysis": AllLayersReplacementAnalysis,
 
+    "perplexity_layer_replacement_redundancy_analysis": PerplexityLayerReplacementAnalysis,
     "resettable_elements_sorted_layers_compression_analysis_with_concatenated_matrices": ResettableElementsSortedLayersCompressionAnalysisWithConcatenatedMatrices
 })
 

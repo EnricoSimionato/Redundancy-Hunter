@@ -5,7 +5,7 @@ path_to_storage: "src/experiments/results"
 experiment_type: "all_layer_couples_displacement_based_replacement_redundancy_analysis"
 #experiment_type: "resettable_elements_sorted_layers_compression_analysis_with_concatenated_matrices"
 
-version: 2
+version: 0
 
 #just_plot: True
 
@@ -14,11 +14,14 @@ device: "cuda"
 seed: 42
 
 ########################################     Model configuration parameters     ########################################
-model_id: "mistralai/Mistral-7B-v0.3"
+#model_id: "mistralai/Mistral-7B-v0.3"
+#dtype: "float16"
+model_id: "google/gemma-7b"
 dtype: "float16"
 
 ########################################   Tokenizer configuration parameters   ########################################
-tokenizer_id: "mistralai/Mistral-7B-v0.3"
+#tokenizer_id: "mistralai/Mistral-7B-v0.3"
+tokenizer_id: "google/gemma-7b"
 
 ########################################       Analysis target parameters       ########################################
 targets:
