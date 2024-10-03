@@ -43,7 +43,7 @@ evaluation_args:
     hellaswag:
         batch_size: 32
     gsm8k:
-        batch_size: 16
+        batch_size: 8
 
 ########################################         Sorted layers analysis         ########################################
 #zero_threshold: 0.001
