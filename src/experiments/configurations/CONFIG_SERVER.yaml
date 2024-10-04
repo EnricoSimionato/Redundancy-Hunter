@@ -29,7 +29,8 @@ targets:
     - ["block_index", "mlp", "gate_proj"]
     - ["block_index", "mlp", "up_proj"]
     - ["block_index", "mlp", "down_proj"]
-num_layers: 32
+num_layers: 28
+#num_layers: 32
 
 ########################################        Visualization parameters        ########################################
 #figure_size: [40, 15]
