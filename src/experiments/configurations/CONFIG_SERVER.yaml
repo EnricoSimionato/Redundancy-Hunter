@@ -5,7 +5,7 @@ path_to_storage: "src/experiments/results"
 experiment_type: "all_layer_couples_displacement_based_replacement_redundancy_analysis"
 #experiment_type: "resettable_elements_sorted_layers_compression_analysis_with_concatenated_matrices"
 
-version: 0
+version: 4
 
 #just_plot: True
 
