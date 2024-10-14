@@ -46,7 +46,7 @@ benchmark_ids:
 #    - "gsm8k"
 evaluation_args:
     hellaswag:
-        batch_size: 32
+        batch_size: 8
     gsm8k:
         batch_size: 4
 
