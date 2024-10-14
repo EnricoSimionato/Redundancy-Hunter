@@ -5,7 +5,7 @@ path_to_storage: "src/experiments/results"
 experiment_type: "all_layer_couples_displacement_based_replacement_redundancy_analysis"
 #experiment_type: "resettable_elements_sorted_layers_compression_analysis_with_concatenated_matrices"
 
-version: 4
+version: 0
 
 #just_plot: True
 
@@ -26,13 +26,13 @@ tokenizer_id: "google/gemma-7b"
 ########################################       Analysis target parameters       ########################################
 targets:
 #    - ["block_index", "mlp"]
-#    - ["block_index", "mlp", "gate_proj"]
-#    - ["block_index", "mlp", "up_proj"]
-#    - ["block_index", "mlp", "down_proj"]
-     - ["block_index", "self_attn", "q_proj"]
-     - ["block_index", "self_attn", "k_proj"]
-     - ["block_index", "self_attn", "v_proj"]
-     - ["block_index", "self_attn", "o_proj"]
+    - ["block_index", "mlp", "gate_proj"]
+    - ["block_index", "mlp", "up_proj"]
+    - ["block_index", "mlp", "down_proj"]
+#     - ["block_index", "self_attn", "q_proj"]
+#     - ["block_index", "self_attn", "k_proj"]
+#     - ["block_index", "self_attn", "v_proj"]
+#     - ["block_index", "self_attn", "o_proj"]
 num_layers: 28
 #num_layers: 32
 
@@ -42,8 +42,8 @@ figure_size: [40, 40]
 
 ######################################## Layers replacement redundancy analysis ########################################
 benchmark_ids:
-#    - "hellaswag"
-    - "gsm8k"
+    - "hellaswag"
+#    - "gsm8k"
 evaluation_args:
     hellaswag:
         batch_size: 32
