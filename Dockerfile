@@ -1,4 +1,5 @@
-FROM python
+FROM python:3.12-slim
+RUN apt-get update && apt-get install -y git
 # Setting the PYTHONPATH
 ENV PYTHONPATH=/Redundancy-Hunter/src
 # Setting the working directory
