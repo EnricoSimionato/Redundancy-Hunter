@@ -5,7 +5,7 @@ experiment_type: "single_null_layers_replacement_redundancy_analysis"
 #experiment_type: "all_layer_couples_displacement_based_replacement_redundancy_analysis"
 #experiment_type: "resettable_elements_sorted_layers_compression_analysis_with_concatenated_matrices"
 
-version: 0
+version: 1
 
 #just_plot: True
 
@@ -42,8 +42,8 @@ figure_size: [40, 40]
 
 ######################################## Layers replacement redundancy analysis ########################################
 benchmark_ids:
-#    - "hellaswag"
-    - "gsm8k"
+    - "hellaswag"
+#    - "gsm8k"
 evaluation_args:
     hellaswag:
         batch_size: 8
