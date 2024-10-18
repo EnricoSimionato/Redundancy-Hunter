@@ -323,7 +323,7 @@ class ProcessedLayerReplacingModelWrapper(LayerReplacingModelWrapper, ABC):
             self.replace_layers()
 
     @abstractmethod
-    def pre_process_source_layers(
+    def preprocess_source_layers(
             self,
             source_layer_path_source_layer_mapping: dict[list | tuple: torch.nn.Module]
     ) -> dict[list | tuple: torch.nn.Module]:
