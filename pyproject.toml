@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+
+[project]
+name = "redhunter"
+version = "0.1.0"
+description = "A package for detecting redundancy in datasets"
+authors = [{name = "Enrico Simionato"}]
+dependencies = [
+    "numpy",
+    "matplotlib",
+    "lm_eval",
+    "pyyaml",
+    "pytorch-lightning",
+    "protobuf",
+    "seaborn",
+    "sentencepiece",
+    "torch",
+    "torchmetrics",
+    "transformers",
+    "exporch @ git+https://EnricoSimionato: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@github.com/EnricoSimionato/Experiment-Orchestrator.git@master#egg=exporch"
+]
