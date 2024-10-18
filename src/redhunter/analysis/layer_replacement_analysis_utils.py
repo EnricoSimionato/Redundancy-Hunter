@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+from abc import abstractmethod, ABC
 from typing import Any, override
 
 import torch
@@ -136,7 +137,7 @@ class LayerReplacingModelWrapper:
 
     def _extract_source_layers(
             self,
-            module_tree: [transformers.PreTrainedModel | transformers.AutoModel | torch.Module],
+            module_tree: [transformers.PreTrainedModel | transformers.AutoModel | torch.nn.Module],
             source_layer_path_source_layer_mapping: dict[list | tuple: list | tuple],
             path: list = None
     ) -> None:
@@ -144,7 +145,7 @@ class LayerReplacingModelWrapper:
         Extracts the source layers from the model.
 
         Args:
-            module_tree ([transformers.PreTrainedModel | transformers.AutoModel | torch.Module]):
+            module_tree ([transformers.PreTrainedModel | transformers.AutoModel | torch.nn.Module]):
                 The module tree.
             source_layer_path_source_layer_mapping (dict[str: str]):
                 The mapping between the path to the layers to be used to replace other layers and their actual weights.
@@ -177,17 +178,17 @@ class LayerReplacingModelWrapper:
 
     def pre_process_source_layers(
             self,
-            source_layer_path_source_layer_mapping: dict[list | tuple: torch.Module]
-    ) -> dict[list | tuple: torch.Module]:
+            source_layer_path_source_layer_mapping: dict[list | tuple: torch.nn.Module]
+    ) -> dict[list | tuple: torch.nn.Module]:
         """
         Pre-processes the source layers.
 
         Args:
-            source_layer_path_source_layer_mapping (dict[str: torch.Module]):
+            source_layer_path_source_layer_mapping (dict[str: torch.nn.Module]):
                 The mapping between the path to the layers to be used to replace other layers and their actual weights.
 
         Returns:
-            dict[str: torch.Module]:
+            dict[str: torch.nn.Module]:
                 The pre-processed source layers.
         """
 
@@ -195,17 +196,17 @@ class LayerReplacingModelWrapper:
 
     def _fill_destination_layers(
             self,
-            module_tree: [transformers.PreTrainedModel | transformers.AutoModel | torch.Module],
-            destination_layer_path_source_layer_mapping: dict[list | tuple: torch.Module],
+            module_tree: [transformers.PreTrainedModel | transformers.AutoModel | torch.nn.Module],
+            destination_layer_path_source_layer_mapping: dict[list | tuple: torch.nn.Module],
             path: list = None
     ) -> None:
         """
         Replaces the destination layers path with the actual source layers.
 
         Args:
-            module_tree ([transformers.PreTrainedModel | transformers.AutoModel | torch.Module]):
+            module_tree ([transformers.PreTrainedModel | transformers.AutoModel | torch.nn.Module]):
                 The module tree.
-            destination_layer_path_source_layer_mapping (dict[str: torch.Module]):
+            destination_layer_path_source_layer_mapping (dict[str: torch.nn.Module]):
                 The mapping between the path to the layers to be replaced and the layers that should be used to replace
                 them.
             path (list, optional):
@@ -262,9 +263,9 @@ class LayerReplacingModelWrapper:
         return self.model.__str__()
 
 
-class NullLayerReplacingModelWrapper(LayerReplacingModelWrapper):
+class ProcessedLayerReplacingModelWrapper(LayerReplacingModelWrapper, ABC):
     """
-    Class to replace layers in a model with a layer that outputs zeros.
+    Class to replace layers in a model with a layer that is the processing of the extracted layers.
 
     Args:
         model ([transformers.PreTrainedModel | transformers.AutoModel]):
@@ -321,20 +322,75 @@ class NullLayerReplacingModelWrapper(LayerReplacingModelWrapper):
         if self.destination_layer_path_source_layer_path_mapping is not None:
             self.replace_layers()
 
-    @override
+    @abstractmethod
     def pre_process_source_layers(
             self,
-            source_layer_path_source_layer_mapping: dict[list | tuple: torch.Module]
-    ) -> dict[list | tuple: torch.Module]:
+            source_layer_path_source_layer_mapping: dict[list | tuple: torch.nn.Module]
+    ) -> dict[list | tuple: torch.nn.Module]:
         """
         Pre-processes the source layers.
 
         Args:
-            source_layer_path_source_layer_mapping (dict[str: torch.Module]):
+            source_layer_path_source_layer_mapping (dict[str: torch.nn.Module]):
                 The mapping between the path to the layers to be used to replace other layers and their actual weights.
 
         Returns:
-            dict[str: torch.Module]:
+            dict[str: torch.nn.Module]:
+                The pre-processed source layers.
+        """
+
+
+class NullLayerReplacingModelWrapper(ProcessedLayerReplacingModelWrapper):
+    """
+    Class to replace layers in a model with a layer that outputs zeros.
+
+    Args:
+        model ([transformers.PreTrainedModel | transformers.AutoModel]):
+            The model to be wrapped.
+        destination_layer_path_source_layer_path_mapping (dict[list | tuple: list | tuple]):
+            The mapping between the path to the layers to be replaced and the path to the layers to be used to replace
+            them. The source_layer_path will be ignored, if given.
+
+    Attributes:
+        model ([transformers.PreTrainedModel | transformers.AutoModel]):
+            The wrapped model.
+        destination_layer_path_source_layer_path_mapping (dict[list | tuple: list | tuple]):
+            The mapping between the path to the layers to be replaced and the path to the layers to be used to replace
+            them.
+            The structure of the dictionary is as follows:
+            {
+                [destination_layer_path_1]: [source_layer_path_1],
+                [destination_layer_path_2]: [source_layer_path_2],
+                ...
+
+            }
+            The source_layer_path will be ignored, if given.
+    """
+
+    def __init__(
+            self,
+            model: [transformers.PreTrainedModel | transformers.AutoModel],
+            destination_layer_path_source_layer_path_mapping: dict[list | tuple: list | tuple] = None,
+    ) -> None:
+        super().__init__(
+            model,
+            destination_layer_path_source_layer_path_mapping
+        )
+
+    @override
+    def pre_process_source_layers(
+            self,
+            source_layer_path_source_layer_mapping: dict[list | tuple: torch.nn.Module]
+    ) -> dict[list | tuple: torch.nn.Module]:
+        """
+        Pre-processes the source layers.
+
+        Args:
+            source_layer_path_source_layer_mapping (dict[str: torch.nn.Module]):
+                The mapping between the path to the layers to be used to replace other layers and their actual weights.
+
+        Returns:
+            dict[str: torch.nn.Module]:
                 The pre-processed source layers.
         """
 
@@ -347,17 +403,17 @@ class NullLayerReplacingModelWrapper(LayerReplacingModelWrapper):
 
     def _fill_with_zeros(
             self,
-            module_tree: [transformers.PreTrainedModel | transformers.AutoModel | torch.Module]
-    ) -> dict[list | tuple: torch.Module]:
+            module_tree: [transformers.PreTrainedModel | transformers.AutoModel | torch.nn.Module]
+    ) -> dict[list | tuple: torch.nn.Module]:
         """
         Fills the layer with zeros.
 
         Args:
-            module_tree ([transformers.PreTrainedModel | transformers.AutoModel | torch.Module]):
+            module_tree ([transformers.PreTrainedModel | transformers.AutoModel | torch.nn.Module]):
                 The module tree.
 
         Returns:
-            dict[str: torch.Module]:
+            dict[str: torch.nn.Module]:
                 The pre-processed source layers.
         """
         if len(module_tree._modules) == 0:
