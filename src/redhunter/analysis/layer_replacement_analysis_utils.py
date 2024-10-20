@@ -126,7 +126,7 @@ class LayerReplacingModelWrapper:
                     for source_path in source_layer_path_source_layer_mapping.keys()]):
                 raise Exception(f"Some layers could not be extracted:\n"
                                 f"{'\n - '.join([str(source_path) for source_path in source_layer_path_source_layer_mapping.keys() if source_layer_path_source_layer_mapping[source_path] is None])}")
-            source_layer_path_source_layer_mapping = self.pre_process_source_layers(source_layer_path_source_layer_mapping)
+            source_layer_path_source_layer_mapping = self._preprocess_source_layers(source_layer_path_source_layer_mapping)
             destination_layer_path_source_layer_mapping = {
                 destination_path: source_layer_path_source_layer_mapping[source_path]
                 for destination_path, source_path in self.get_destination_layer_path_source_layer_path_mapping().items()
@@ -176,7 +176,7 @@ class LayerReplacingModelWrapper:
                     new_path
                 )
 
-    def pre_process_source_layers(
+    def _preprocess_source_layers(
             self,
             source_layer_path_source_layer_mapping: dict[list | tuple: torch.nn.Module]
     ) -> dict[list | tuple: torch.nn.Module]:
@@ -322,6 +322,26 @@ class ProcessedLayerReplacingModelWrapper(LayerReplacingModelWrapper, ABC):
         if self.destination_layer_path_source_layer_path_mapping is not None:
             self.replace_layers()
 
+    @override
+    def _preprocess_source_layers(
+            self,
+            source_layer_path_source_layer_mapping: dict[list | tuple: torch.nn.Module]
+    ) -> dict[list | tuple: torch.nn.Module]:
+        """
+        Pre-processes the source layers.
+
+        Args:
+            source_layer_path_source_layer_mapping (dict[str: torch.nn.Module]):
+                The mapping between the path to the layers to be used to replace other layers and their actual weights.
+
+        Returns:
+            dict[str: torch.nn.Module]:
+                The pre-processed source layers.
+        """
+
+        return self.preprocess_source_layers(source_layer_path_source_layer_mapping)
+
+
     @abstractmethod
     def preprocess_source_layers(
             self,
@@ -378,7 +398,7 @@ class NullLayerReplacingModelWrapper(ProcessedLayerReplacingModelWrapper):
         )
 
     @override
-    def pre_process_source_layers(
+    def preprocess_source_layers(
             self,
             source_layer_path_source_layer_mapping: dict[list | tuple: torch.nn.Module]
     ) -> dict[list | tuple: torch.nn.Module]:
