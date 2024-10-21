@@ -1,8 +1,8 @@
 ########################################    General configuration parameters    ########################################
 path_to_storage: "src/experiments/results"
 
-experiment_type: "single_null_layers_replacement_redundancy_analysis"
-#experiment_type: "all_layer_couples_displacement_based_replacement_redundancy_analysis"
+#experiment_type: "single_null_layers_replacement_redundancy_analysis"
+experiment_type: "all_layer_couples_displacement_based_replacement_redundancy_analysis"
 #experiment_type: "resettable_elements_sorted_layers_compression_analysis_with_concatenated_matrices"
 
 version: 10
@@ -26,7 +26,7 @@ tokenizer_id: "mistralai/Mistral-7B-v0.3"
 ########################################       Analysis target parameters       ########################################
 targets:
 #    - ["block_index", "mlp"]
-    
+
 #    - ["block_index", "mlp", "gate_proj"]
 #    - ["block_index", "mlp", "up_proj"]
 #    - ["block_index", "mlp", "down_proj"]
