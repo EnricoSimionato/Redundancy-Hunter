@@ -1,4 +1,4 @@
-FROM python:3.13-slim
+FROM python:3.14-slim
 RUN apt-get update && apt-get install -y git
 # Setting the PYTHONPATH
 ENV PYTHONPATH=/Redundancy-Hunter/src
@@ -7,7 +7,7 @@ WORKDIR /Redundancy-Hunter
 # Copying the entire contents of the Redundancy-Hunter directory
 COPY . .
 # Installing dependencies
-RUN pip3 install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 # Logging in to the Hugging Face model hub
 RUN huggingface-cli login --token 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
 # Setting the command to run the script
