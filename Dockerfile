@@ -7,7 +7,7 @@ WORKDIR /Redundancy-Hunter
 # Copying the entire contents of the Redundancy-Hunter directory
 COPY . .
 # Installing dependencies
-RUN pip install -r requirements.txt
+RUN pip3 install -r requirements.txt
 # Logging in to the Hugging Face model hub
 RUN huggingface-cli login --token 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
 # Setting the command to run the script
