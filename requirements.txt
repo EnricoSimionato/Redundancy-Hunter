@@ -1,6 +1,6 @@
 numpy
 seaborn
-torch
+torch==2.4.1
 transformers
 sentencepiece
 protobuf
