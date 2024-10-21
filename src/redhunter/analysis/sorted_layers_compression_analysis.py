@@ -17,7 +17,7 @@ from exporch.experiment import evaluate_model_on_benchmark
 from exporch.utils.causal_language_modeling import load_model_for_causal_lm
 from exporch.utils.plot_utils import plot_heatmap_with_additional_row_column, plot_heatmap
 
-from redhunter.analysis.analysis_utils import AnalysisTensorDict, AnalysisTensorWrapper, extract_based_on_path
+from redhunter.analysis.analysis_utils import AnalysisTensorDict, AnalysisTensorWrapper, extract
 from redhunter.analysis.delta_layers_rank_analysis import compute_delta_matrices
 from redhunter.analysis.layer_replacement_analysis_utils import LayerReplacingModelWrapper
 from redhunter.analysis_experiment import AnalysisExperiment
@@ -94,7 +94,7 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
             model.cpu()
 
             # Extracting the layers to analyze
-            extract_based_on_path(
+            extract(
                 module_tree=model,
                 target_paths=self.config.get("targets"),
                 layers_storage=original_tensor_wrappers,

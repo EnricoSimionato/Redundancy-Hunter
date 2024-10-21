@@ -14,7 +14,7 @@ from exporch import Config, Verbose, get_available_device
 
 from exporch.utils.causal_language_modeling import load_model_for_causal_lm
 
-from redhunter.analysis.analysis_utils import AnalysisTensorDict, extract_based_on_path
+from redhunter.analysis.analysis_utils import AnalysisTensorDict, extract
 
 
 def tensor_loss(
@@ -255,7 +255,7 @@ def perform_simple_initialization_analysis(
         logger.info(f"Trying to extract the candidate tensors for the analysis")
         # Extracting the candidate tensors for the analysis
         extracted_tensors = []
-        extract_based_on_path(
+        extract(
             model,
             configuration.get("targets"),
             extracted_tensors,
@@ -546,7 +546,7 @@ def perform_global_matrices_initialization_analysis(
 
         # Extracting the candidate tensors for the analysis
         extracted_tensor_wrappers = []
-        extract_based_on_path(
+        extract(
             model,
             configuration.get("targets"),
             extracted_tensor_wrappers,

@@ -124,7 +124,7 @@ class LayerReplacementAnalysis(AnalysisExperiment):
                 self.log(f"Starting the evaluation of the model on the device {model_wrapper.get_model().device}.")
                 results = self._evaluate_model(
                     model_wrapper.get_model(), tokenizer, benchmark_id, benchmark_evaluation_args, device)
-                #results = {benchmark_id: {"acc_norm,none": int(list(destination_layer_path_source_layer_path_mapping.keys())[0][0])}} # Testing
+                #results = {benchmark_id: {"acc_norm,none": 0.1}} # Testing
                 self.log(f"Results of the modified model: {results}")
                 print(f"Results of the modified model: {results}")
 

@@ -1541,58 +1541,6 @@ def compute_max_possible_rank(
 # Definition of the functions to extract the matrices from the model tree
 
 def extract(
-        model_tree: torch.nn.Module,
-        names_of_targets: list,
-        extracted_matrices: list,
-        path: list = [],
-        verbose: bool = False,
-        **kwargs
-) -> None:
-    """
-    Extracts the matrices from the model tree.
-
-    Args:
-        model_tree (torch.nn.Module):
-            The model tree.
-        names_of_targets (list):
-            The names of the targets.
-        extracted_matrices (list):
-            The list of extracted matrices.
-        path (list, optional):
-            The path to the current layer. Defaults to [].
-        verbose (bool, optional):
-            Whether to print the layer name. Defaults to False.
-    """
-
-    for layer_name in model_tree._modules.keys():
-        child = model_tree._modules[layer_name]
-        if len(child._modules) == 0:
-            if layer_name in names_of_targets:
-                if verbose:
-                    print(f"Found {layer_name} in {path}")
-
-                extracted_matrices.append(
-                    {
-                        "weight": child.weight.detach().numpy(),
-                        "layer_name": layer_name,
-                        "label": [el for el in path if re.search(r'\d', el)][0],
-                        "path": path
-                    }
-                )
-        else:
-            new_path = path.copy()
-            new_path.append(layer_name)
-            extract(
-                child,
-                names_of_targets,
-                extracted_matrices,
-                new_path,
-                verbose=verbose,
-                **kwargs
-            )
-
-
-def extract_based_on_path(
         module_tree: [torch.nn.Module | transformers.AutoModel],
         target_paths: list,
         layers_storage: AnalysisTensorDict,
@@ -1657,7 +1605,7 @@ def extract_based_on_path(
                 )
         else:
             # Recursively calling the function
-            extract_based_on_path(
+            extract(
                 module_tree=child,
                 target_paths=target_paths,
                 layers_storage=layers_storage,

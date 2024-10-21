@@ -10,7 +10,7 @@ from exporch import Config, Verbose
 from exporch.utils.causal_language_modeling import load_model_for_causal_lm
 from exporch.utils.plot_utils import plot_heatmap
 
-from redhunter.analysis.analysis_utils import AnalysisTensorDict, extract_based_on_path, compute_max_possible_rank
+from redhunter.analysis.analysis_utils import AnalysisTensorDict, extract, compute_max_possible_rank
 
 
 def perform_original_layers_rank_analysis(
@@ -56,7 +56,7 @@ def perform_original_layers_rank_analysis(
 
         # Extracting the layers to analyze
         extracted_layers = []
-        extract_based_on_path(
+        extract(
             model,
             configuration.get("targets"),
             extracted_layers,

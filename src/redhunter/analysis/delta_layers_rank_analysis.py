@@ -13,7 +13,7 @@ from exporch.utils.plot_utils import plot_heatmap # TODO to change to the new pl
 from redhunter.analysis.analysis_utils import (
     AnalysisTensorWrapper,
     AnalysisTensorDict,
-    extract_based_on_path,
+    extract,
     compute_max_possible_rank
 )
 
@@ -219,7 +219,7 @@ def perform_delta_consecutive_layers_rank_analysis(
 
         # Extracting the layers to analyze
         extracted_layers = []
-        extract_based_on_path(
+        extract(
             model,
             configuration.get("targets"),
             extracted_layers,
@@ -352,7 +352,7 @@ def perform_all_delta_layers_rank_analysis(
 
         # Extracting the layers to analyze
         extracted_layers = []
-        extract_based_on_path(
+        extract(
             model,
             configuration.get("targets"),
             extracted_layers,
@@ -506,7 +506,7 @@ def perform_delta_layers_wrt_average_rank_analysis(
 
         # Extracting the layers to analyze
         extracted_layers = []
-        extract_based_on_path(
+        extract(
             model,
             configuration.get("targets"),
             extracted_layers,

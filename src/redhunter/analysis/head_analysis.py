@@ -17,7 +17,7 @@ from exporch.utils.causal_language_modeling import load_model_for_causal_lm
 from redhunter.analysis.rank_analysis_utils import compute_explained_variance
 
 from redhunter.analysis.sorted_layers_compression_analysis import compute_cosine
-from redhunter.analysis.analysis_utils import AnalysisTensorWrapper, extract_based_on_path
+from redhunter.analysis.analysis_utils import AnalysisTensorWrapper, extract
 
 
 def extract_heads(
@@ -109,7 +109,7 @@ def perform_head_analysis(
             model = load_model_for_causal_lm(configuration)
             # Extracting the tensors to be analyzed
             extracted_tensors = []
-            extract_based_on_path(
+            extract(
                 model,
                 configuration.get("targets"),
                 extracted_tensors,
@@ -298,7 +298,7 @@ def perform_heads_similarity_analysis(
         model = load_model_for_causal_lm(configuration)
         # Extracting the tensors to be analysed
         extracted_tensors = []
-        extract_based_on_path(
+        extract(
             model,
             configuration.get("targets"),
             extracted_tensors,
@@ -470,7 +470,7 @@ def perform_query_key_analysis(
         model = load_model_for_causal_lm(configuration)
         # Extracting the tensors to be analyzed
         extracted_tensors = []
-        extract_based_on_path(
+        extract(
             model,
             configuration.get("targets"),
             extracted_tensors,

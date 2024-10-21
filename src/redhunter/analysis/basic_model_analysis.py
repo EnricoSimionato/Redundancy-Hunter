@@ -6,7 +6,7 @@ from exporch import Verbose
 
 from exporch.utils.causal_language_modeling import load_model_for_causal_lm
 
-from redhunter.analysis.analysis_utils import extract_based_on_path
+from redhunter.analysis.analysis_utils import extract
 
 
 def analyze_layers(
@@ -30,7 +30,7 @@ def analyze_layers(
     """
 
     extracted_layers = []
-    extract_based_on_path(
+    extract(
         model,
         paths_layers_to_analyze,
         extracted_layers,
