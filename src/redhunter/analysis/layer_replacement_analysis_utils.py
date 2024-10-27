@@ -8,6 +8,7 @@ import torch
 
 import transformers
 
+from exporch.utils.parameters_count import count_parameters
 from redhunter.utils.list_utils.list_utils import is_subsequence
 
 
@@ -46,8 +47,15 @@ class LayerReplacingModelWrapper:
         self.destination_layer_path_source_layer_path_mapping = destination_layer_path_source_layer_path_mapping
         self.overwritten_layers = {}
 
+        self.info = {
+            "original_model_parameters": count_parameters(self.model),
+            "original_model_trainable_parameters": count_parameters(self.model, only_trainable=True)
+        }
+
         if self.destination_layer_path_source_layer_path_mapping is not None:
             self.replace_layers()
+
+        print("Model converted")
 
     def get_model(
             self
@@ -134,6 +142,20 @@ class LayerReplacingModelWrapper:
         else:
             destination_layer_path_source_layer_mapping = self.get_destination_layer_path_source_layer_path_mapping()
         self._fill_destination_layers(self.model, destination_layer_path_source_layer_mapping)
+
+        model_parameters = count_parameters(self.model)
+        self.info.update(
+            {
+                "model_parameters": model_parameters,
+                "model_trainable_parameters": count_parameters(self.model, only_trainable=True),
+                "percentage_parameters": model_parameters / self.info["original_model_parameters"] * 100
+            }
+        )
+
+        print(f"Number of parameters original model: {self.info['original_model_parameters']}")
+        print(f"Number of parameters global model: {self.info['model_parameters']}")
+        print(f"Percentage of parameters: {self.info['percentage_parameters']}%")
+        print()
 
     def _extract_source_layers(
             self,
