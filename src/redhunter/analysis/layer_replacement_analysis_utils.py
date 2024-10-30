@@ -55,6 +55,7 @@ class LayerReplacingModelWrapper:
         if self.destination_layer_path_source_layer_path_mapping is not None:
             self.replace_layers()
 
+        print(self.model)
         print("Model converted")
 
     def get_model(
