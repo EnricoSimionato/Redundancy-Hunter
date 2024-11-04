@@ -9,10 +9,11 @@ import torch
 import transformers
 
 from exporch.utils.parameters_count import count_parameters
+from exporch.utils import LoggingInterface
 from redhunter.utils.list_utils.list_utils import is_subsequence
 
 
-class LayerReplacingModelWrapper:
+class LayerReplacingModelWrapper(LoggingInterface):
     """
     Class to replace layers in a model with other layers of the same model.
 
@@ -43,6 +44,7 @@ class LayerReplacingModelWrapper:
             model: [transformers.PreTrainedModel | transformers.AutoModel],
             destination_layer_path_source_layer_path_mapping: dict[list | tuple: list | tuple | Any] = None,
     ) -> None:
+        super().__init__()
         self.model = model
         self.destination_layer_path_source_layer_path_mapping = destination_layer_path_source_layer_path_mapping
         self.overwritten_layers = {}
@@ -145,19 +147,17 @@ class LayerReplacingModelWrapper:
         self._fill_destination_layers(self.model, destination_layer_path_source_layer_mapping)
 
         model_parameters = count_parameters(self.model)
-        self.info.update(
-            {
+        self.info.update({
                 "model_parameters": model_parameters,
                 "model_trainable_parameters": count_parameters(self.model, only_trainable=True),
                 "percentage_parameters": model_parameters / self.info["original_model_parameters"] * 100
-            }
-        )
+        })
 
-        print(f"Number of parameters original model: {self.info['original_model_parameters']}")
-        print(f"Number of parameters global model: {self.info['model_parameters']}")
-        print(f"Percentage of parameters: {self.info['percentage_parameters']}%")
-        print()
-
+        self.log(f"Number of parameters original model: {self.info['original_model_parameters']}")
+        self.log(f"Number of trainable parameters original model: {self.info['original_model_trainable_parameters']}")
+        self.log(f"Number of parameters global model: {self.info['model_parameters']}")
+        self.log(f"Percentage of parameters: {self.info['percentage_parameters']}%\n")
+        
     def _extract_source_layers(
             self,
             module_tree: [transformers.PreTrainedModel | transformers.AutoModel | torch.nn.Module],
