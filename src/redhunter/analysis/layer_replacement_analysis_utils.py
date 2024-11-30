@@ -157,7 +157,7 @@ class LayerReplacingModelWrapper(LoggingInterface):
         self.log(f"Number of trainable parameters original model: {self.info['original_model_trainable_parameters']}")
         self.log(f"Number of parameters global model: {self.info['model_parameters']}")
         self.log(f"Percentage of parameters: {self.info['percentage_parameters']}%\n")
-        
+
     def _extract_source_layers(
             self,
             module_tree: [transformers.PreTrainedModel | transformers.AutoModel | torch.nn.Module],

@@ -141,14 +141,14 @@ class LayerReplacementAnalysis(AnalysisExperiment):
                 self.data = (destination_layer_path_source_layer_path_mapping_list, performance_dict)
                 # Storing the data
                 self.log(f"Trying to store the data for benchmark {benchmark_id}...")
-                self.store_data()
+                self.set_data((destination_layer_path_source_layer_path_mapping_list, performance_dict))
                 self.log(f"Partial data stored.")
 
             self.data = (destination_layer_path_source_layer_path_mapping_list, performance_dict)
 
             # Storing the data
             self.log(f"Trying to store the data for benchmark {benchmark_id}...")
-            self.store_data()
+            self.set_data((destination_layer_path_source_layer_path_mapping_list, performance_dict))
             self.log(f"Stored data up to benchmark {benchmark_id}.")
 
         self.log("All data stored.")
@@ -647,7 +647,7 @@ class AllLayerCouplesReplacementAnalysis(LayerReplacementAnalysis):
 
         self.data = (destination_layer_path_source_layer_path_mapping_list, performance_dict)
 
-        self.store_data()
+        self.set_data((destination_layer_path_source_layer_path_mapping_list, performance_dict))
         self.log("The results have been post-processed and stored.")
 
 
