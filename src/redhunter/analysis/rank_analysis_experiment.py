@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 from abc import ABC, abstractmethod
 from typing import Any, override
 
+from matplotlib.cm import get_cmap
+
 import numpy as np
 
 import torch
@@ -29,9 +31,7 @@ class RankAnalysis(AnalysisExperiment, ABC):
         GeneralPurposeExperiment. This method is abstract and must be implemented in the specific subclass.
         """
 
-        if self.exists_file("svd.pkl"):
-            self.load("svd.pkl", "pkl")
-        else:
+        if self.get_data() is None:
             # Extracting the matrices from the model
             extracted_layers = self._extract_layers()
 
@@ -42,10 +42,11 @@ class RankAnalysis(AnalysisExperiment, ABC):
             results = self._compute_singular_values_on_analysis_dict(preprocessed_tensors)
 
             # Saving the singular values and explained variance
-            self.set_data(results)
+            self.set_data(results, position=0)
 
         # Computing the rank
         results = self._compute_rank()
+        self.set_data(results, position=0)
 
     def _extract_layers(
             self
@@ -58,7 +59,7 @@ class RankAnalysis(AnalysisExperiment, ABC):
         config = self.get_config()
 
         # Loading the model
-        model = load_model_for_causal_lm(config)
+        model = load_model_for_causal_lm(config).cpu()
 
         # Extracting the layers to analyze
         extracted_layers = AnalysisTensorDict()
@@ -143,16 +144,16 @@ class RankAnalysis(AnalysisExperiment, ABC):
 
         self.log("Computing the rank of the layers.")
 
-        explained_variance_threshold = self.get_config().get("explained_variance_threshold")
-        singular_values_threshold = self.get_config().get("singular_values_threshold")
+        explained_variance_threshold = self.get_config().get("explained_variance_threshold") if self.get_config().contains("explained_variance_threshold") else 1.
+        singular_values_threshold = self.get_config().get("singular_values_threshold") if self.get_config().contains("singular_values_threshold") else 0.
 
         if explained_variance_threshold <= 0. or explained_variance_threshold > 1.:
             raise ValueError("The threshold on the explained variance must be between 0 and 1.")
 
-        results = {}
-        singular_values_explained_variance = self.get_data()
+        #results = {}
+        singular_values_explained_variance = self.get_data()[0]
         for label in singular_values_explained_variance.keys():
-            results[label] = {}
+            #results[label] = {}
             for tensor_key in singular_values_explained_variance[label]:
                 singular_values = singular_values_explained_variance[label][tensor_key]["singular_values"]
                 explained_variance = singular_values_explained_variance[label][tensor_key]["explained_variance"]
@@ -166,14 +167,9 @@ class RankAnalysis(AnalysisExperiment, ABC):
 
                 rank = np.minimum(rank_based_on_explained_variance, rank_based_on_singular_values)
 
-                if self.config.contains("relative_rank") and self.config.get("relative_rank"):
-                    precision = self.config.get("precision") if self.config.contains("precision") else 2
-                    shape =  singular_values_explained_variance[label][tensor_key]["shape"]
-                    rank = round(rank / (torch.sqrt(torch.tensor(shape[0]) * torch.tensor(shape[1]))).item(), precision)
+                singular_values_explained_variance[label][tensor_key].update({"rank": rank})
 
-                results[label][tensor_key] = {"rank": rank}
-
-        return results
+        return singular_values_explained_variance
 
     def _postprocess_results(
             self
@@ -201,29 +197,64 @@ class RankAnalysis(AnalysisExperiment, ABC):
         """
 
         self.log("Plotting singular values and fraction of explained variance.")
+        fig_size = config.get("figure_size") if config.contains("figure_size") else (10, 10)
         configuration = self.get_config()
 
         # Plotting the singular values and fraction of explained variance
-        results = self.get_data()
+        results = self.get_data()[0]
         for label in results.keys():
-            for tensor_key in results[label].keys():
+            colormap = get_cmap("viridis")
+            num_tensors = len(results[label].keys())
+            line_colors = colormap(np.linspace(0, 1, num_tensors))
+
+            fig, ax = plt.subplots(1, 2, figsize=(fig_size[1], fig_size[1]/2))
+            fig.suptitle(f"Singular values and fraction of explained variance of the tensors with label '{" ".join(label)}' of the model '{config.get("model_id")}'", fontsize=16)
+            for idx, (tensor_key, color) in enumerate(zip(results[label].keys(), line_colors)):
                 singular_values = results[label][tensor_key]["singular_values"]
                 explained_variance = results[label][tensor_key]["explained_variance"]
 
-                fig, ax = plt.subplots(1, 2, figsize=(15, 5))
-                ax[0].plot(singular_values, label="Singular values")
-                ax[0].set_title(f"Singular values of the tensor {tensor_key} - {label}")
-                ax[0].set_xlabel("Singular value index")
-                ax[0].set_ylabel("Singular value")
-                ax[0].legend()
+                plot_color = "red" if idx == 0 else color
 
-                ax[1].plot(explained_variance, label="Fraction of explained variance")
-                ax[1].set_title(f"Fraction of explained variance of the tensor {tensor_key} - {label}")
-                ax[1].set_xlabel("Singular value index")
-                ax[1].set_ylabel("Fraction of explained variance")
-                ax[1].legend()
+                ax[0].plot(singular_values, label=tensor_key, color=plot_color)
+                ax[1].plot(explained_variance, label=tensor_key, color=plot_color)
 
-                plt.savefig(configuration.get("directory_path"))
+                position = int(len(singular_values) * (idx + 1) / (num_tensors + 1))
+
+                # Annotate the chosen position on the singular values plot
+                ax[0].text(
+                    position,
+                    singular_values[position],
+                    str(idx),
+                    fontsize=10,
+                    color=plot_color,
+                    bbox=dict(boxstyle="round,pad=0.3", edgecolor=plot_color, facecolor="white"),
+                )
+
+                # Annotate the chosen position on the explained variance plot
+                ax[1].text(
+                    position,
+                    explained_variance[position],
+                    str(idx),
+                    fontsize=10,
+                    color=plot_color,
+                    bbox=dict(boxstyle="round,pad=0.3", edgecolor=plot_color, facecolor="white"),
+                )
+
+            ax[0].set_title(f"Singular values of the tensors with label '{" ".join(label)}'")
+            ax[0].set_xlabel("Singular value index")
+            ax[0].set_ylabel("Singular value")
+            ax[0].legend()
+            ax[0].grid(True)
+
+            ax[1].set_title(f"Fraction of explained variance of the tensors with label '{" ".join(label)}'")
+            ax[1].set_xlabel("Singular value index")
+            ax[1].set_ylabel("Fraction of explained variance")
+            ax[1].legend()
+            ax[1].grid(True)
+
+            plt.tight_layout()
+            # Saving the plot
+            plt.savefig(str(os.path.join(config.get("experiment_root_path"), f"singular_values_distribution_{"_".join(label)}.pdf")), format="pdf")
 
         # Plotting the rank analysis
         explained_variance_threshold = configuration.get("explained_variance_threshold")
@@ -232,48 +263,51 @@ class RankAnalysis(AnalysisExperiment, ABC):
         heatmap_name += "_expvar_" + str(explained_variance_threshold).replace('.', '_') + "_sv_" + str(singular_values_threshold).replace('.', '_')
         layer_types = list(results.keys())
         number_of_blocks = len(list(results.values())[0].keys())
-        fig_size = configuration.get("fig_size") if configuration.contains("fig_size") else (15, 5)
 
         tensor_ranks_list = []
         tensor_shapes_list = []
         for index_label, label in enumerate(layer_types):
-            ranks = np.zeros((len(layer_types), number_of_blocks))
-            relative_ranks = np.zeros((len(layer_types), number_of_blocks))
+            ranks = np.zeros((1, number_of_blocks))
+            relative_ranks = np.zeros((1, number_of_blocks))
 
             tensor_shapes_list.append([])
             for index_block, tensor_key in enumerate(results[label].keys()):
                 rank = results[label][tensor_key]["rank"]
                 shape = results[label][tensor_key]["shape"]
-                ranks[index_label, index_block] = rank
+                tensor_shapes_list[-1].append(shape)
+                ranks[0, index_block] = rank
 
                 if configuration.contains("relative_rank") and configuration.get("relative_rank"):
 
-                    rank = round(rank / (torch.sqrt(torch.tensor(shape[0]) * torch.tensor(shape[1]))).item(), 2)
+                    relative_rank = round(rank / (torch.sqrt(torch.tensor(shape[0]) * torch.tensor(shape[1]))).item(), 2)
+                    relative_ranks[0, index_block] = relative_rank
 
-                relative_ranks[index_label, index_block] = rank
-                tensor_shapes_list[-1].append(shape)
-
-            tensor_ranks_list.append([ranks, relative_ranks])
+            if configuration.contains("relative_rank") and configuration.get("relative_rank"):
+                tensor_ranks_list.append([ranks, relative_ranks])
+            else:
+                tensor_ranks_list.append([ranks])
 
         plot_heatmap(
             tensor_ranks_list,
-            os.path.join(config.get("directory_path"), heatmap_name),
+            str(os.path.join(config.get("experiment_root_path"), f"{heatmap_name}.pdf")),
             "Rank analysis of the matrices of the model" + f" (explained variance threshold: {explained_variance_threshold})",
 
             axes_displacement="column",
             axis_titles=[f"Rank values for matrices with label {label}" for label in layer_types],
-            interval=[{"min": 0, "max": min(shape)} for label in layer_types],
-            axis_titles=[f"Metric: {benchmark_id_metric_name_mapping[benchmark_id]}"],
+            #interval=[{"min": 0, "max": min(shape)} for label in layer_types],
             x_title="Block indexes",
             y_title="Layer type",
-            x_labels=[overwritten_layers_labels_list[benchmark_id]],
-            y_labels=[duplicated_layers_labels_list[benchmark_id]],
-
-            fig_size=fig_size
+            x_labels=[[str(i) for i in range(number_of_blocks)] for _ in layer_types],
+            y_labels=[[label] for label in layer_types],
+            fig_size=(fig_size[1], fig_size[1]/4 * len(layer_types)),
+            precision=1,
+            fontsize=10,
+            vmin=[0 for _ in layer_types],
+            vmax=[min(min(tuple(shape)) for shape in shape_list) for shape_list in tensor_shapes_list]
         )
 
 
-class BlockSortedRankAnalysis(RankAnalysis, ABC):
+class TypeSortedRankAnalysis(RankAnalysis, ABC):
     """
     Class to perform the rank analysis of the layers of a model.
     """
@@ -294,12 +328,12 @@ class BlockSortedRankAnalysis(RankAnalysis, ABC):
         self.log("Preprocessing the extracted tensors.")
         preprocessed_tensors = self.preprocess_extracted_tensors(extracted_tensors)
 
-        sorted_tensors = preprocessed_tensors.group_by_block_index()
+        sorted_tensors = preprocessed_tensors.group_by_name()
 
         return sorted_tensors
 
 
-class OriginalLayersRankAnalysis(BlockSortedRankAnalysis):
+class OriginalLayersRankAnalysis(TypeSortedRankAnalysis):
     """
     Class to perform the rank analysis of the layers of a model.
     """

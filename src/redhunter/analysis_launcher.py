@@ -17,6 +17,9 @@ from redhunter.analysis.layer_replacement_analysis import (
 
     PerplexityLayerReplacementAnalysis
 )
+from redhunter.analysis.rank_analysis_experiment import (
+    OriginalLayersRankAnalysis
+)
 from redhunter.analysis.sorted_layers_compression_analysis import (
     ResettableElementsSortedLayersCompressionAnalysisWithConcatenatedMatrices
 )
@@ -36,7 +39,9 @@ GeneralPurposeExperimentFactory.register({
     "all_layers_replacement_redundancy_analysis": AllLayersReplacementAnalysis,
 
     "perplexity_layer_replacement_redundancy_analysis": PerplexityLayerReplacementAnalysis,
-    "resettable_elements_sorted_layers_compression_analysis_with_concatenated_matrices": ResettableElementsSortedLayersCompressionAnalysisWithConcatenatedMatrices
+    "resettable_elements_sorted_layers_compression_analysis_with_concatenated_matrices": ResettableElementsSortedLayersCompressionAnalysisWithConcatenatedMatrices,
+
+    "original_layer_rank_analysis": OriginalLayersRankAnalysis
 })
 
 

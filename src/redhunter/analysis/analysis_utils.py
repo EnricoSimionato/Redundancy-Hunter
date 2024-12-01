@@ -12,12 +12,90 @@ import transformers
 
 from exporch import Verbose
 
-from redhunter.analysis.rank_analysis_utils import (
-    compute_explained_variance,
-    compute_singular_values,
-    RankAnalysisResult
-)
 from redhunter.utils.list_utils.list_utils import is_subsequence
+
+
+class RankAnalysisResult:
+    """
+    Class to store the result of the rank analysis. It stores the rank of the tensor and the thresholds used to compute
+    the rank.
+
+    Args:
+        rank (int):
+            The rank of the tensor.
+        explained_variance_threshold (float, optional):
+            The threshold on the explained variance to use to compute the rank. Rank is computed as the number of
+            singular values that explain the threshold fraction of the total variance. Defaults to 0.
+        singular_values_threshold (float, optional):
+            The threshold to use to compute the rank based on singular values. Rank is computed as the number of
+            singular values that are greater than the threshold. Defaults to 0.
+        verbose (Verbose, optional):
+            The verbosity level. Defaults to Verbose.INFO.
+
+    Attributes:
+        rank (int):
+            The rank of the tensor.
+        explained_variance_threshold (float):
+            The threshold on the explained variance to use to compute the rank. Rank is computed as the number of
+            singular values that explain the threshold fraction of the total variance.
+        singular_values_threshold (float):
+            The threshold to use to compute the rank based on singular values. Rank is computed as the number of
+            singular values that are greater than the threshold.
+        verbose (Verbose):
+            The verbosity level.
+    """
+
+    def __init__(
+            self,
+            rank: int,
+            explained_variance_threshold: float = 0,
+            singular_values_threshold: float = 0,
+            verbose: Verbose = Verbose.INFO
+    ) -> None:
+        self.rank = rank
+        self.explained_variance_threshold = explained_variance_threshold
+        self.singular_values_threshold = singular_values_threshold
+
+        self.verbose = verbose
+
+    def get_rank(
+            self
+    ) -> int:
+        """
+        Returns the rank of the tensor.
+
+        Returns:
+            int:
+                The rank of the tensor.
+        """
+
+        return self.rank
+
+    def get_explained_variance_threshold(
+            self
+    ) -> float:
+        """
+        Returns the threshold on the explained variance to use to compute the rank.
+
+        Returns:
+            float:
+                The threshold on the explained variance to use to compute the rank.
+        """
+
+        return self.explained_variance_threshold
+
+    def get_singular_values_threshold(
+            self
+    ) -> float:
+        """
+        Returns the threshold to use to compute the rank based on singular values.
+
+        Returns:
+            float:
+                The threshold to use to compute the rank based on singular values.
+        """
+
+        return self.singular_values_threshold
 
 
 # Definition of the classes to perform the rank analysis
@@ -137,16 +215,19 @@ class AnalysisTensorWrapper:
         return self.label
 
     def get_path(
-            self
-    ) -> list:
+            self,
+            string: bool = False
+    ) -> list | str:
         """
         Returns the path of the tensor.
 
         Returns:
-            list:
+            list | str:
                 The path of the tensor.
         """
 
+        if string:
+            return ".".join(self.path)
         return self.path
 
     def get_block_index(
@@ -225,7 +306,7 @@ class AnalysisTensorWrapper:
                 The explained variance of the tensor.
         """
 
-        return compute_explained_variance(self.singular_values)
+        return self.compute_explained_variance(self.singular_values)
 
     def get_rank(
             self,
@@ -540,12 +621,44 @@ class AnalysisTensorWrapper:
 
     def compute_singular_values(
             self
-    ) -> None:
+    ) -> np.ndarray:
         """
         Computes the singular values of the tensor.
+
+        Returns:
+            np.ndarray:
+                The singular values of the tensor.
         """
 
-        self.set_singular_values(compute_singular_values(self.get_tensor(numpy_array=True)))
+        singular_values = np.linalg.svd(self.get_tensor(numpy_array=True), compute_uv=False)
+        self.set_singular_values(singular_values)
+
+        return singular_values
+
+    def compute_explained_variance(
+            self,
+            scaling: int = 1
+    ) -> np.array:
+        """
+        Computes the explained variance for a set of singular values.
+
+        Args:
+            scaling (float, optional):
+                Scaling to apply to the explained variance at each singular value. Default to 1.
+
+        Returns:
+            np.array:
+                The explained variance for each singular value.
+        """
+
+        s = self.get_singular_values()
+        if s is None:
+            raise ValueError("The singular values must be computed before computing the explained variance.")
+
+        if s[0] == 0.:
+            return np.ones(len(s))
+
+        return (np.square(s) * scaling).cumsum() / (np.square(s) * scaling).sum()
 
     def _perform_rank_analysis(
             self,
@@ -572,7 +685,7 @@ class AnalysisTensorWrapper:
         if explained_variance_threshold <= 0. or explained_variance_threshold > 1.:
             raise ValueError("The threshold on the explained variance must be between 0 and 1.")
 
-        explained_variance = compute_explained_variance(self.singular_values)
+        explained_variance = self.compute_explained_variance(self.singular_values)
 
         rank_based_on_explained_variance = np.argmax(explained_variance >= explained_variance_threshold) + 1
 
@@ -653,6 +766,36 @@ class AnalysisTensorDict:
         self.layer_paths_configurations_to_analyze = layer_paths_configurations_to_analyze
 
         self.verbose = verbose
+
+    def group_by_block_index(
+            self
+    ) -> 'AnalysisTensorDict':
+
+        grouped_tensors = AnalysisTensorDict()
+        for key in self.tensors.keys():
+            for tensor in self.tensors[key]:
+                block_index = tensor.get_block_index()
+                if block_index is not None:
+                    grouped_tensors.append_tensor(
+                        block_index,
+                        tensor
+                    )
+        return grouped_tensors
+
+    def group_by_name(
+            self
+    ) -> 'AnalysisTensorDict':
+
+        grouped_tensors = AnalysisTensorDict()
+        for key in self.tensors.keys():
+            for tensor in self.tensors[key]:
+                name = tensor.get_name()
+                if name is not None:
+                    grouped_tensors.append_tensor(
+                        name,
+                        tensor
+                    )
+        return grouped_tensors
 
     def get_tensor(
             self,
@@ -947,6 +1090,32 @@ class AnalysisTensorDict:
                 )
 
         return filtered_tensors
+
+    def compute_singular_values(
+            self
+    ) -> dict:
+        """
+        Computes the singular values of the tensors.
+
+        Returns:
+            dict:
+                The singular values of the tensors and the explained variance.
+        """
+
+        results = {}
+        for key in self.tensors.keys():
+            results[key] = {}
+            for tensor in self.tensors[key]:
+                singular_values = tensor.compute_singular_values()
+                explained_variance = tensor.get_explained_variance()
+                a = tensor.get_path(string=True)
+                results[key][tensor.get_path(string=True)] = {
+                    "singular_values": singular_values,
+                    "explained_variance": explained_variance,
+                    "shape": tensor.get_shape()
+                }
+
+        return results
 
 
 class AnalysisLayerWrapper(torch.nn.Module):
@@ -1462,6 +1631,31 @@ class AnalysisModelWrapper(torch.nn.Module):
 
 
 # Definition of the functions to compute the rank of a matrix
+
+def compute_explained_variance(
+        self,
+        scaling: int = 1
+) -> np.array:
+    """
+    Computes the explained variance for a set of singular values.
+
+    Args:
+        scaling (float, optional):
+            Scaling to apply to the explained variance at each singular value. Default to 1.
+
+    Returns:
+        np.array:
+            The explained variance for each singular value.
+    """
+
+    s = self.get_singular_values()
+    if s is None:
+        raise ValueError("The singular values must be computed before computing the explained variance.")
+
+    if s[0] == 0.:
+        return np.ones(len(s))
+
+    return (np.square(s) * scaling).cumsum() / (np.square(s) * scaling).sum()
 
 def compute_rank(
         singular_values: dict,
