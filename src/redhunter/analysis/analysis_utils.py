@@ -184,9 +184,9 @@ class AnalysisTensorWrapper:
         """
 
         if numpy_array:
-            return self.tensor.detach().numpy()
+            return self.tensor.detach().to(torch.float32).numpy()
         else:
-            return self.tensor.detach()
+            return self.tensor.detach().to(torch.float32)
 
     def get_name(
             self
