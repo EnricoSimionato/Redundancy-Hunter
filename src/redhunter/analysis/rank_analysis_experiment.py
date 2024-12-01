@@ -59,7 +59,7 @@ class RankAnalysis(AnalysisExperiment, ABC):
         config = self.get_config()
 
         # Loading the model
-        model = load_model_for_causal_lm(config).cpu()
+        model = load_model_for_causal_lm(config)
 
         # Extracting the layers to analyze
         extracted_layers = AnalysisTensorDict()
