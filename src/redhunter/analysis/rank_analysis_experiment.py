@@ -300,7 +300,7 @@ class RankAnalysis(AnalysisExperiment, ABC):
             x_labels=[[str(i) for i in range(number_of_blocks)] for _ in layer_types],
             y_labels=[[label] for label in layer_types],
             fig_size=(fig_size[1], fig_size[1]/4 * len(layer_types)),
-            precision=1,
+            precision=2,
             fontsize=10,
             vmin=[0 for _ in layer_types],
             vmax=[min(min(tuple(shape)) for shape in shape_list) for shape_list in tensor_shapes_list]

@@ -12,13 +12,13 @@ device: "cpu"
 seed: 42
 
 ########################################     Model configuration parameters     ########################################
-#model_id: "mistralai/Mistral-7B-v0.3"
-model_id: "meta-llama/Llama-3.1-8B"
+model_id: "mistralai/Mistral-7B-v0.3"
+#model_id: "meta-llama/Llama-3.1-8B"
 dtype: "float16"
 
 ########################################   Tokenizer configuration parameters   ########################################
-tokenizer_id: "meta-llama/Llama-3.1-8B"
-#tokenizer_id: "mistralai/Mistral-7B-v0.3"
+#tokenizer_id: "meta-llama/Llama-3.1-8B"
+tokenizer_id: "mistralai/Mistral-7B-v0.3"
 
 ########################################       Analysis target parameters       ########################################
 targets:
@@ -30,7 +30,6 @@ targets:
     - ["k_proj"]
     - ["v_proj"]
     - ["o_proj"]
-
 
 ########################################        Visualization parameters        ########################################
 figure_size: [40, 40]
