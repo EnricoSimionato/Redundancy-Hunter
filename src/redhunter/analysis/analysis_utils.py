@@ -14,6 +14,7 @@ from exporch import Verbose
 
 from redhunter.utils.list_utils.list_utils import is_subsequence
 
+from exporch.utils import LoggingInterface
 
 class RankAnalysisResult:
     """
@@ -708,7 +709,7 @@ class AnalysisTensorWrapper:
         )
 
 # TODO implement a method to group the things
-class AnalysisTensorDict:
+class AnalysisTensorDict(LoggingInterface):
     """
     Dictionary of tensors for the analysis.
 
@@ -1105,6 +1106,7 @@ class AnalysisTensorDict:
         results = {}
         for key in self.tensors.keys():
             results[key] = {}
+            self.log(f"Computing singular values for tensors with key {key}.")
             for tensor in self.tensors[key]:
                 singular_values = tensor.compute_singular_values()
                 explained_variance = tensor.get_explained_variance()
@@ -1690,7 +1692,6 @@ def compute_rank(
     ranks = {}
     for layer_name in singular_values.keys():
         ranks[layer_name] = []
-
         for s in singular_values[layer_name]["s"]:
             explained_variance = compute_explained_variance(s)
             rank_based_on_explained_variance = np.argmax(explained_variance > threshold)

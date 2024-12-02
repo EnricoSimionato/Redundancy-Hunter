@@ -18,7 +18,12 @@ from redhunter.analysis.layer_replacement_analysis import (
     PerplexityLayerReplacementAnalysis
 )
 from redhunter.analysis.rank_analysis_experiment import (
-    OriginalLayersRankAnalysis
+    OriginalLayersRankAnalysis,
+    ConcatenatedLayersRankAnalysis,
+
+    DeltaConsecutiveLayersRankAnalysis,
+    DeltaLayersWRTAverageLayerRankAnalysis,
+    AllDeltaLayersRankAnalysis
 )
 from redhunter.analysis.sorted_layers_compression_analysis import (
     ResettableElementsSortedLayersCompressionAnalysisWithConcatenatedMatrices
@@ -41,7 +46,12 @@ GeneralPurposeExperimentFactory.register({
     "perplexity_layer_replacement_redundancy_analysis": PerplexityLayerReplacementAnalysis,
     "resettable_elements_sorted_layers_compression_analysis_with_concatenated_matrices": ResettableElementsSortedLayersCompressionAnalysisWithConcatenatedMatrices,
 
-    "original_layer_rank_analysis": OriginalLayersRankAnalysis
+    "original_layer_rank_analysis": OriginalLayersRankAnalysis,
+    "concatenated_layer_rank_analysis": ConcatenatedLayersRankAnalysis,
+
+    "delta_consecutive_layers_rank_analysis": DeltaConsecutiveLayersRankAnalysis,
+    "delta_layers_wrt_average_layer_rank_analysis": DeltaLayersWRTAverageLayerRankAnalysis,
+    "all_delta_layers_rank_analysis": AllDeltaLayersRankAnalysis
 })
 
 

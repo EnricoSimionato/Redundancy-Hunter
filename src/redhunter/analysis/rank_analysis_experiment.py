@@ -14,7 +14,7 @@ from exporch import Config
 from exporch.utils.causal_language_modeling import load_model_for_causal_lm
 from exporch.utils.plot_utils import plot_heatmap
 
-from redhunter.analysis.analysis_utils import AnalysisTensorDict, extract
+from redhunter.analysis.analysis_utils import AnalysisTensorDict, AnalysisTensorWrapper, extract
 from redhunter.analysis_experiment import AnalysisExperiment
 
 
@@ -23,12 +23,15 @@ class RankAnalysis(AnalysisExperiment, ABC):
     Class to perform the rank analysis of the layers of a model.
     """
 
+
     def _run_experiment(
             self
     ) -> None:
         """
-        Runs the experiment. Performing the operations that are defined in the specific subclass of
-        GeneralPurposeExperiment. This method is abstract and must be implemented in the specific subclass.
+        Runs the experiment.
+
+        It computes the singular values and fraction of explained variance of the layers of the model and the
+        approximated rank of the matrices.
         """
 
         if self.get_data() is None:
@@ -52,7 +55,11 @@ class RankAnalysis(AnalysisExperiment, ABC):
             self
     ) -> AnalysisTensorDict:
         """
-        Extracts the layers from the model.
+        Extracts the layers to be analyzed from the model.
+
+        Returns:
+            AnalysisTensorDict:
+                The extracted layers
         """
 
         self.log("Extracting the matrices from the model.")
@@ -84,6 +91,10 @@ class RankAnalysis(AnalysisExperiment, ABC):
         Args:
             extracted_tensors (AnalysisTensorDict):
                 The extracted matrices.
+
+        Returns:
+            AnalysisTensorDict:
+                The preprocessed tensors.
         """
 
         self.log("Preprocessing the extracted tensors.")
@@ -103,6 +114,10 @@ class RankAnalysis(AnalysisExperiment, ABC):
         Args:
             extracted_tensors (AnalysisTensorDict):
                 The extracted matrices.
+
+        Returns:
+            AnalysisTensorDict:
+                The preprocessed tensors.
         """
 
         return extracted_tensors
@@ -150,10 +165,8 @@ class RankAnalysis(AnalysisExperiment, ABC):
         if explained_variance_threshold <= 0. or explained_variance_threshold > 1.:
             raise ValueError("The threshold on the explained variance must be between 0 and 1.")
 
-        #results = {}
         singular_values_explained_variance = self.get_data()[0]
         for label in singular_values_explained_variance.keys():
-            #results[label] = {}
             for tensor_key in singular_values_explained_variance[label]:
                 singular_values = singular_values_explained_variance[label][tensor_key]["singular_values"]
                 explained_variance = singular_values_explained_variance[label][tensor_key]["explained_variance"]
@@ -176,6 +189,7 @@ class RankAnalysis(AnalysisExperiment, ABC):
     ) -> None:
         """
         Post-processes the results obtained from the experiment.
+        By default, it does nothing.
         """
 
         pass
@@ -187,7 +201,8 @@ class RankAnalysis(AnalysisExperiment, ABC):
     ) -> None:
         """
         Plots the results obtained from the experiment.
-        The performed operations will depend on the specific subclass of GeneralPurposeExperiment.
+        It plots the singular values and fraction of explained variance of the layers on figure and the approximated
+        rank of the matrices on another.
 
         Args:
             config (Config):
@@ -196,19 +211,70 @@ class RankAnalysis(AnalysisExperiment, ABC):
                 The data obtained from the analysis.
         """
 
-        self.log("Plotting singular values and fraction of explained variance.")
-        fig_size = config.get("figure_size") if config.contains("figure_size") else (10, 10)
-        configuration = self.get_config()
+        kwargs_plot_singular_values_distribution = self.get_kwargs_plot_singular_values_distribution(config, data)
+        self._plot_singular_values_distribution(config, data, **kwargs_plot_singular_values_distribution)
+        kwargs_plot_rank_analysis = self.get_kwargs_plot_rank_analysis(config, data)
+        self._plot_rank_analysis(config, data, **kwargs_plot_rank_analysis)
 
-        # Plotting the singular values and fraction of explained variance
-        results = self.get_data()[0]
+    def get_kwargs_plot_singular_values_distribution(
+            self,
+            config: Config,
+            data: Any
+    ) -> dict:
+        """
+        Gets the keyword arguments to plot the singular values distribution.
+
+        Args:
+            config (Config):
+                The configuration of the experiment.
+            data (Any):
+                The data obtained from the analysis.
+
+        Returns:
+            dict:
+                The keyword arguments.
+        """
+
+        return {}
+
+    def _plot_singular_values_distribution(
+            self,
+            config: Config,
+            data: Any,
+            **kwargs: dict
+    ) -> None:
+        """
+        Plots the singular values distribution.
+
+        Args:
+            config (Config):
+                The configuration of the experiment.
+            data (Any):
+                The data obtained from the analysis.
+            kwargs (dict):
+                Additional keyword arguments.
+                Structure:
+                    >> { label: { key: value, ... }, ... }
+        """
+
+        self.log("Plotting singular values and fraction of explained variance.")
+        results = data[0]
+        fig_size = config.get("figure_size") if config.contains("figure_size") else (10, 10)
+        key_arguments = {label: {
+            "title": f"Singular values and fraction of explained variance of the tensors with label '{" ".join(label)}' of the model '{config.get("model_id")}'",
+        } for label in results.keys()}
+        key_arguments.update(kwargs)
+
         for label in results.keys():
+            # Defining the colormap
             colormap = get_cmap("viridis")
             num_tensors = len(results[label].keys())
             line_colors = colormap(np.linspace(0, 1, num_tensors))
 
-            fig, ax = plt.subplots(1, 2, figsize=(fig_size[1], fig_size[1]/2))
-            fig.suptitle(f"Singular values and fraction of explained variance of the tensors with label '{" ".join(label)}' of the model '{config.get("model_id")}'", fontsize=16)
+            # Creating the plot
+            fig, ax = plt.subplots(1, 2, figsize=(fig_size[1], fig_size[1] / 2))
+            fig.suptitle(key_arguments[label]["title"], fontsize=16)
+
             for idx, (tensor_key, color) in enumerate(zip(results[label].keys(), line_colors)):
                 singular_values = results[label][tensor_key]["singular_values"]
                 explained_variance = results[label][tensor_key]["explained_variance"]
@@ -220,7 +286,7 @@ class RankAnalysis(AnalysisExperiment, ABC):
 
                 position = int(len(singular_values) * (idx + 1) / (num_tensors + 1))
 
-                # Annotate the chosen position on the singular values plot
+                # Annotating the block number on chosen position in the singular values plot
                 ax[0].text(
                     position,
                     singular_values[position],
@@ -230,7 +296,7 @@ class RankAnalysis(AnalysisExperiment, ABC):
                     bbox=dict(boxstyle="round,pad=0.3", edgecolor=plot_color, facecolor="white"),
                 )
 
-                # Annotate the chosen position on the explained variance plot
+                # Annotating the block number on chosen position in the explained variance plot
                 ax[1].text(
                     position,
                     explained_variance[position],
@@ -240,12 +306,14 @@ class RankAnalysis(AnalysisExperiment, ABC):
                     bbox=dict(boxstyle="round,pad=0.3", edgecolor=plot_color, facecolor="white"),
                 )
 
+            # Setting the singular values plot properties
             ax[0].set_title(f"Singular values of the tensors with label '{" ".join(label)}'")
             ax[0].set_xlabel("Singular value index")
             ax[0].set_ylabel("Singular value")
             ax[0].legend()
             ax[0].grid(True)
 
+            # Setting the explained variance plot properties
             ax[1].set_title(f"Fraction of explained variance of the tensors with label '{" ".join(label)}'")
             ax[1].set_xlabel("Singular value index")
             ax[1].set_ylabel("Fraction of explained variance")
@@ -254,15 +322,54 @@ class RankAnalysis(AnalysisExperiment, ABC):
 
             plt.tight_layout()
             # Saving the plot
-            plt.savefig(str(os.path.join(config.get("experiment_root_path"), f"singular_values_distribution_{"_".join(label)}.pdf")), format="pdf")
+            plt.savefig(str(os.path.join(config.get("experiment_root_path"),
+                                         f"singular_values_distribution_{"_".join(label)}.pdf")), format="pdf")
 
-        # Plotting the rank analysis
-        explained_variance_threshold = configuration.get("explained_variance_threshold")
-        singular_values_threshold = configuration.get("singular_values_threshold")
-        heatmap_name = configuration.get("heatmap_name") if configuration.contains("heatmap_name") else "heatmap"
-        heatmap_name += "_expvar_" + str(explained_variance_threshold).replace('.', '_') + "_sv_" + str(singular_values_threshold).replace('.', '_')
+    def _plot_rank_analysis(
+            self,
+            config: Config,
+            data: Any,
+            **kwargs: dict
+    ) -> None:
+        """
+        Plots a heatmap containing the approximated ranks of the model layers.
+
+        Args:
+            config (Config):
+                The configuration of the experiment.
+            data (Any):
+                The data obtained from the analysis.
+            kwargs (dict):
+                Additional keyword arguments.
+                Structure:
+                    >> { label: { key: value, ... }, ... }
+        """
+
+        self.log("Plotting the rank analysis.")
+
+        results = data[0]
         layer_types = list(results.keys())
         number_of_blocks = len(list(results.values())[0].keys())
+
+        explained_variance_threshold = config.get("explained_variance_threshold")
+        singular_values_threshold = config.get("singular_values_threshold")
+        relative_rank = config.get("relative_rank") if config.contains("relative_rank") else False
+        fig_size = config.get("figure_size") if config.contains("figure_size") else (10, 10)
+        heatmap_name = config.get("heatmap_name") if config.contains("heatmap_name") else "heatmap"
+        heatmap_name += "_expvar_" + str(explained_variance_threshold).replace('.', '_') + "_sv_" + str(singular_values_threshold).replace('.', '_')
+        key_arguments = {
+            "title": "Rank analysis of the matrices of the model" + f" (explained variance threshold: {explained_variance_threshold})",
+            "axes_displacement" : "column",
+            "axis_titles" : [f"Rank values for matrices with label {label}" for label in layer_types],
+            "x_title" : "Block indexes",
+            "y_title" : "Layer type",
+            "x_labels" : [[str(i) for i in range(number_of_blocks)] for _ in layer_types],
+            "y_labels" : [[label] for label in layer_types],
+            "fig_size" : (fig_size[1], fig_size[1] / 4 * len(layer_types)),
+            "precision" : 2,
+            "fontsize" : 10
+        }
+        key_arguments.update(kwargs)
 
         tensor_ranks_list = []
         tensor_shapes_list = []
@@ -277,34 +384,37 @@ class RankAnalysis(AnalysisExperiment, ABC):
                 tensor_shapes_list[-1].append(shape)
                 ranks[0, index_block] = rank
 
-                if configuration.contains("relative_rank") and configuration.get("relative_rank"):
-
+                if config.contains("relative_rank") and config.get("relative_rank"):
                     relative_rank = round(rank / (torch.sqrt(torch.tensor(shape[0]) * torch.tensor(shape[1]))).item(), 2)
                     relative_ranks[0, index_block] = relative_rank
 
-            if configuration.contains("relative_rank") and configuration.get("relative_rank"):
+            if relative_rank:
                 tensor_ranks_list.append([ranks, relative_ranks])
             else:
                 tensor_ranks_list.append([ranks])
 
-        plot_heatmap(
-            tensor_ranks_list,
-            str(os.path.join(config.get("experiment_root_path"), f"{heatmap_name}.pdf")),
-            "Rank analysis of the matrices of the model" + f" (explained variance threshold: {explained_variance_threshold})",
+        plot_heatmap(tensor_ranks_list, save_path=str(os.path.join(config.get("experiment_root_path"), f"{heatmap_name}.pdf")), vmin=[0 for _ in layer_types], vmax=[min(min(tuple(shape)) for shape in shape_list) for shape_list in tensor_shapes_list], **key_arguments)
 
-            axes_displacement="column",
-            axis_titles=[f"Rank values for matrices with label {label}" for label in layer_types],
-            #interval=[{"min": 0, "max": min(shape)} for label in layer_types],
-            x_title="Block indexes",
-            y_title="Layer type",
-            x_labels=[[str(i) for i in range(number_of_blocks)] for _ in layer_types],
-            y_labels=[[label] for label in layer_types],
-            fig_size=(fig_size[1], fig_size[1]/4 * len(layer_types)),
-            precision=2,
-            fontsize=10,
-            vmin=[0 for _ in layer_types],
-            vmax=[min(min(tuple(shape)) for shape in shape_list) for shape_list in tensor_shapes_list]
-        )
+    def get_kwargs_plot_rank_analysis(
+            self,
+            config: Config,
+            data: Any
+    ) -> dict:
+        """
+        Gets the keyword arguments to plot the rank analysis.
+
+        Args:
+            config (Config):
+                The configuration of the experiment.
+            data (Any):
+                The data obtained from the analysis.
+
+        Returns:
+            dict:
+                The keyword arguments.
+        """
+
+        return {}
 
 
 class TypeSortedRankAnalysis(RankAnalysis, ABC):
@@ -352,3 +462,345 @@ class OriginalLayersRankAnalysis(TypeSortedRankAnalysis):
         """
 
         return extracted_tensors
+
+
+class ConcatenatedLayersRankAnalysis(TypeSortedRankAnalysis):
+    """
+    Class to perform the rank analysis of the layers of a model.
+    """
+
+    @override
+    def preprocess_extracted_tensors(
+            self,
+            extracted_tensors: AnalysisTensorDict
+    ) -> AnalysisTensorDict:
+        """
+        Preprocesses the extracted matrices.
+        It concatenates the matrices with the same name.
+
+        Args:
+            extracted_tensors (AnalysisTensorDict):
+                The extracted matrices.
+        """
+
+        preprocessed_tensors = AnalysisTensorDict()
+        for label in extracted_tensors.get_keys():
+            preprocessed_tensors = extracted_tensors.get_tensor_list(label)
+            concatenated_tensor = torch.cat([extracted_tensors[label][i].get_tensor() for i in range(len(extracted_tensors[label]))], dim=0)
+            preprocessed_tensors.append_tensor(label, [AnalysisTensorWrapper(concatenated_tensor, name=label, label=label, block_index=0)])
+
+        return preprocessed_tensors
+
+
+class DeltaLayersRankAnalysis(TypeSortedRankAnalysis, ABC):
+    """
+    Class to perform the rank analysis of the delta between layers of a model.
+    """
+
+    def compute_delta_matrices(
+            self,
+            minuend_matrices: list[AnalysisTensorWrapper],
+            subtrahend_matrices: list[AnalysisTensorWrapper],
+    ) -> list[AnalysisTensorWrapper]:
+        """
+        Computes the delta between two lists of matrices.
+
+        Args:
+            minuend_matrices (list):
+                List of minuend matrices.
+            subtrahend_matrices (list):
+                List of subtrahend matrices.
+            verbose (Verbose):
+                The verbosity level. Defaults to Verbose.SILENT.
+
+        Returns:
+            list[AnalysisTensorWrapper]:
+                List of delta matrices.
+        """
+
+        self.log("Computing delta matrices...")
+
+        delta_matrices = []
+
+        for i in range(len(minuend_matrices)):
+            minuend_matrix = minuend_matrices[i].get_tensor()
+            subtrahend_matrix = subtrahend_matrices[i].get_tensor()
+
+            delta_matrix = minuend_matrix - subtrahend_matrix
+            delta_matrices.append(
+                AnalysisTensorWrapper(
+                    delta_matrix,
+                    name=minuend_matrices[i].get_name(),
+                    label=str(minuend_matrices[i].get_label()) + " - " + str(subtrahend_matrices[i].get_label()),
+                    block_index=minuend_matrices[i].get_block_index()
+                )
+            )
+
+        return delta_matrices
+
+
+class DeltaConsecutiveLayersRankAnalysis(DeltaLayersRankAnalysis):
+    """
+    Class to perform the rank analysis of the layers of a model.
+    """
+
+    def compute_delta_consecutive_matrices(
+            self,
+            tensors: list[AnalysisTensorWrapper],
+    ) -> list[AnalysisTensorWrapper]:
+        """
+        Compute the delta between consecutive matrices.
+
+        Args:
+            tensors (list[AnalysisTensorWrapper]):
+                List of matrices.
+
+        Returns:
+            list:
+                List of delta matrices.
+        """
+
+        self.log("Computing delta consecutive matrices...")
+
+        minuend_matrices = tensors[1:].copy()
+        subtrahend_matrices = tensors[:-1].copy()
+
+        return self.compute_delta_matrices(minuend_matrices, subtrahend_matrices)
+
+    @override
+    def preprocess_extracted_tensors(
+            self,
+            extracted_tensors: AnalysisTensorDict
+    ) -> AnalysisTensorDict:
+        """
+        Preprocesses the extracted matrices.
+        It computes the delta matrices between consecutive layers.
+
+        Args:
+            extracted_tensors (AnalysisTensorDict):
+                The extracted matrices.
+        """
+
+        preprocessed_tensors = AnalysisTensorDict()
+        for label in extracted_tensors.get_keys():
+            tensor_list = extracted_tensors.get_tensor_list(label)
+            delta_tensors = self.compute_delta_consecutive_matrices(tensor_list)
+
+            preprocessed_tensors.append_tensor(label, delta_tensors)
+
+        return preprocessed_tensors
+
+    def get_kwargs_plot_singular_values_distribution(
+            self,
+            config: Config,
+            data: Any
+    ) -> dict:
+        """
+        Gets the keyword arguments to plot the singular values distribution.
+
+        Args:
+            config (Config):
+                The configuration of the experiment.
+            data (Any):
+                The data obtained from the analysis.
+
+        Returns:
+            dict:
+                The keyword arguments.
+        """
+
+        results = data[0]
+        kwargs = super().get_kwargs_plot_singular_values_distribution(config, data)
+        kwargs.update({label: {
+            "title": f"Singular values and fraction of explained variance difference between consecutive layers with label '{" ".join(label)}' of the model '{config.get("model_id")}",
+        } for label in results.keys()})
+
+        return kwargs
+
+class DeltaLayersWRTAverageLayerRankAnalysis(DeltaLayersRankAnalysis):
+    """
+    Class to perform the rank analysis of the deltas between layers of a model and their average.
+    """
+
+    def compute_delta_wrt_average_matrices(
+            self,
+            tensors: list[AnalysisTensorWrapper],
+    ) -> list[AnalysisTensorWrapper]:
+        """
+        Computes the delta between the average matrix and the rest of the matrices.
+
+        Args:
+            tensors (list[AnalysisTensorWrapper]):
+                List of matrices.
+
+        Returns:
+            list[AnalysisTensorWrapper]:
+                List of delta matrices.
+        """
+
+        self.log("Computing delta matrices with respect to the average matrix...")
+
+        minuend_matrices = tensors.copy()
+        stacked_tensors = torch.stack([matrix.get_tensor() for matrix in tensors])
+        average_tensor = torch.mean(stacked_tensors, dim=0)
+        layer_name = f"{tensors[0].get_name()}"
+
+        for i in range(len(tensors)):
+            layer_name += "_"
+            layer_name += tensors[i].get_name()
+
+        average_matrix = AnalysisTensorWrapper(
+            average_tensor,
+            name=layer_name,
+            label="avg",
+            block_index=tensors[0].get_block_index(),
+            path=tensors[0].get_path()
+        )
+
+        subtrahend_matrices = [average_matrix] * len(minuend_matrices)
+
+        return self.compute_delta_matrices(
+            minuend_matrices,
+            subtrahend_matrices
+        )
+
+    @override
+    def preprocess_extracted_tensors(
+            self,
+            extracted_tensors: AnalysisTensorDict
+    ) -> AnalysisTensorDict:
+        """
+        Preprocesses the extracted matrices.
+        It computes the delta matrices with respect to the average matrix.
+
+        Args:
+            extracted_tensors (AnalysisTensorDict):
+                The extracted matrices.
+        """
+
+        preprocessed_tensors = AnalysisTensorDict()
+        for label in extracted_tensors.get_keys():
+            tensor_list = extracted_tensors.get_tensor_list(label)
+            delta_tensors = self.compute_delta_wrt_average_matrices(tensor_list)
+
+            preprocessed_tensors.append_tensor(label, delta_tensors)
+
+        return preprocessed_tensors
+
+    def get_kwargs_plot_singular_values_distribution(
+            self,
+            config: Config,
+            data: Any
+    ) -> dict:
+        """
+        Gets the keyword arguments to plot the singular values distribution.
+
+        Args:
+            config (Config):
+                The configuration of the experiment.
+            data (Any):
+                The data obtained from the analysis.
+
+        Returns:
+            dict:
+                The keyword arguments.
+        """
+
+        results = data[0]
+        kwargs = super().get_kwargs_plot_singular_values_distribution(config, data)
+        kwargs.update({label: {
+            "title": f"Singular values and fraction of explained variance of the deltas between layers with label '{" ".join(label)}' and the other layers with the same label of the model '{config.get("model_id")}",
+        } for label in results.keys()})
+
+        return kwargs
+
+
+class AllDeltaLayersRankAnalysis(DeltaLayersRankAnalysis):
+    """
+    Class to perform the rank analysis of the deltas between all the layers of a model and the others.
+    """
+
+    def compute_all_delta_matrices(
+            self,
+            all_delta_tensors: AnalysisTensorDict,
+            tensors: list[AnalysisTensorWrapper],
+    ) -> AnalysisTensorDict:
+        """
+        Compute the delta between each matrix and all the others.
+
+        Args:
+            all_delta_tensors (AnalysisTensorDict):
+                Dictionary that will contain the delta matrices.
+            tensors (list[AnalysisTensorWrapper]):
+                List of matrices.
+
+        Returns:
+            AnalysisTensorDict:
+                Dictionary containing the delta matrices organized by the index of the minuend
+        """
+
+        self.log("Computing all delta matrices...")
+
+        all_delta_tensors = AnalysisTensorDict()
+        for i in range(len(tensors)):
+            minuend_tensors = [tensors[i]] * len(tensors)
+            subtrahend_tensors = tensors.copy()
+
+            delta_tensors_minuend_i = self.compute_delta_matrices(minuend_tensors, subtrahend_tensors)
+            for j in range(len(subtrahend_tensors)):
+                if i != j:
+                    all_delta_tensors.append_tensor(
+                        (i, j, tensors[i].get_label(), tensors[j].get_label()),
+                        delta_tensors_minuend_i[j]
+                    )
+
+        return all_delta_tensors
+
+    @override
+    def preprocess_extracted_tensors(
+            self,
+            extracted_tensors: AnalysisTensorDict
+    ) -> AnalysisTensorDict:
+        """
+        Preprocesses the extracted matrices.
+        It computes the delta matrices between all the layers.
+
+        Args:
+            extracted_tensors (AnalysisTensorDict):
+                The extracted matrices.
+        """
+
+        for label in extracted_tensors.get_keys():
+            tensor_list = extracted_tensors.get_tensor_list(label)
+            all_delta_tensors = AnalysisTensorDict()
+            preprocessed_tensors = self.compute_all_delta_matrices(all_delta_tensors, tensor_list)
+            preprocessed_tensors.append_tensor(label, all_delta_tensors.get_tensor_list())
+
+        return preprocessed_tensors
+
+    def get_kwargs_plot_singular_values_distribution(
+            self,
+            config: Config,
+            data: Any
+    ) -> dict:
+        """
+        Gets the keyword arguments to plot the singular values distribution.
+
+        Args:
+            config (Config):
+                The configuration of the experiment.
+            data (Any):
+                The data obtained from the analysis.
+
+        Returns:
+            dict:
+                The keyword arguments.
+        """
+
+        results = data[0]
+        kwargs = super().get_kwargs_plot_singular_values_distribution(config, data)
+        kwargs.update({label: {
+            "title": f"Singular values and fraction of explained variance difference between consecutive layers with label '{" ".join(label)}' of the model '{config.get("model_id")}",
+        } for label in results.keys()})
+
+        return kwargs

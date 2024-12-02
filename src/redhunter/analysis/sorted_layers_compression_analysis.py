@@ -18,7 +18,6 @@ from exporch.utils.causal_language_modeling import load_model_for_causal_lm
 from exporch.utils.plot_utils import plot_heatmap_with_additional_row_column, plot_heatmap
 
 from redhunter.analysis.analysis_utils import AnalysisTensorDict, AnalysisTensorWrapper, extract
-from redhunter.analysis.delta_layers_rank_analysis import compute_delta_matrices
 from redhunter.analysis.layer_replacement_analysis_utils import LayerReplacingModelWrapper
 from redhunter.analysis_experiment import AnalysisExperiment
 
@@ -43,6 +42,47 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
         self.axis_titles = None
         self.x_title = "Index of the block"
         self.y_title = "Index of the block"
+
+    def compute_delta_matrices(
+            self,
+            minuend_matrices: list[AnalysisTensorWrapper],
+            subtrahend_matrices: list[AnalysisTensorWrapper],
+    ) -> list[AnalysisTensorWrapper]:
+        """
+        Computes the delta between two lists of matrices.
+
+        Args:
+            minuend_matrices (list):
+                List of minuend matrices.
+            subtrahend_matrices (list):
+                List of subtrahend matrices.
+            verbose (Verbose):
+                The verbosity level. Defaults to Verbose.SILENT.
+
+        Returns:
+            list[AnalysisTensorWrapper]:
+                List of delta matrices.
+        """
+
+        self.log("Computing delta matrices...")
+
+        delta_matrices = []
+
+        for i in range(len(minuend_matrices)):
+            minuend_matrix = minuend_matrices[i].get_tensor()
+            subtrahend_matrix = subtrahend_matrices[i].get_tensor()
+
+            delta_matrix = minuend_matrix - subtrahend_matrix
+            delta_matrices.append(
+                AnalysisTensorWrapper(
+                    delta_matrix,
+                    name=minuend_matrices[i].get_name(),
+                    label=str(minuend_matrices[i].get_label()) + " - " + str(subtrahend_matrices[i].get_label()),
+                    block_index=minuend_matrices[i].get_block_index()
+                )
+            )
+
+        return delta_matrices
 
     @override
     def _run_experiment(
@@ -140,7 +180,7 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
             #sorted_layers_in_block_2 = layers_in_block_2
 
             # Subtracting the layers of block and the sorted layers of another block
-            delta_matrices = compute_delta_matrices(layers_in_block_1, sorted_layers_in_block_2)
+            delta_matrices = self.compute_delta_matrices(layers_in_block_1, sorted_layers_in_block_2)
 
             # Processing the delta matrices of the layers based on the specific operations that the analysis performs
             for delta_matrix in delta_matrices:

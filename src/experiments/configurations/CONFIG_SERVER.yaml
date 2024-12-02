@@ -12,13 +12,15 @@ device: "cpu"
 seed: 42
 
 ########################################     Model configuration parameters     ########################################
-model_id: "mistralai/Mistral-7B-v0.3"
+model_id: "google/gemma-7b"
+#model_id: "mistralai/Mistral-7B-v0.3"
 #model_id: "meta-llama/Llama-3.1-8B"
 dtype: "float16"
 
 ########################################   Tokenizer configuration parameters   ########################################
+tokenizer_id: "google/gemma-7b"
+#tokenizer_id: "mistralai/Mistral-7B-v0.3"
 #tokenizer_id: "meta-llama/Llama-3.1-8B"
-tokenizer_id: "mistralai/Mistral-7B-v0.3"
 
 ########################################       Analysis target parameters       ########################################
 targets:
