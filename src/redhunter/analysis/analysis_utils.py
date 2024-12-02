@@ -228,7 +228,7 @@ class AnalysisTensorWrapper:
         """
 
         if string:
-            return ".".join(self.path)
+            return " ".join(self.path)
         return self.path
 
     def get_block_index(
@@ -746,6 +746,7 @@ class AnalysisTensorDict(LoggingInterface):
             layer_paths_configurations_to_analyze: list[list[str]] = (),
             verbose: Verbose = Verbose.INFO
     ) -> None:
+        super().__init__()
 
         if len(tensors) != len(keys):
             raise ValueError("The number of keys must be equal to the number of tensors.")
@@ -1106,11 +1107,10 @@ class AnalysisTensorDict(LoggingInterface):
         results = {}
         for key in self.tensors.keys():
             results[key] = {}
-            self.log(f"Computing singular values for tensors with key {key}.")
+            self.log(f"Computing singular values for tensors with key {key}.", print_message=True)
             for tensor in self.tensors[key]:
                 singular_values = tensor.compute_singular_values()
                 explained_variance = tensor.get_explained_variance()
-                a = tensor.get_path(string=True)
                 results[key][tensor.get_path(string=True)] = {
                     "singular_values": singular_values,
                     "explained_variance": explained_variance,
