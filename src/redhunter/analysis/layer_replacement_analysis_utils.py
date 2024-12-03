@@ -133,10 +133,14 @@ class LayerReplacingModelWrapper(LoggingInterface):
         if len(source_paths) != 0 and (isinstance(list(source_paths)[0], list) or isinstance(list(source_paths)[0], tuple)):
             source_layer_path_source_layer_mapping = {source_path: None for source_path in source_paths}
             self._extract_source_layers(self.get_model(), source_layer_path_source_layer_mapping)
-            if any([source_layer_path_source_layer_mapping[source_path] is None
-                    for source_path in source_layer_path_source_layer_mapping.keys()]):
-                raise Exception(f"Some layers could not be extracted:\n"
-                                f"{'\n - '.join([str(source_path) for source_path in source_layer_path_source_layer_mapping.keys() if source_layer_path_source_layer_mapping[source_path] is None])}")
+            if any([source_layer_path_source_layer_mapping[source_path] is None for source_path in source_layer_path_source_layer_mapping.keys()]):
+                not_extracted_layers = '\n - '.join(
+                    [str(source_path)
+                     for source_path in source_layer_path_source_layer_mapping.keys()
+                     if source_layer_path_source_layer_mapping[source_path] is None]
+                )
+                raise Exception(f"Some layers could not be extracted: {not_extracted_layers}\n")
+
             source_layer_path_source_layer_mapping = self._preprocess_source_layers(source_layer_path_source_layer_mapping)
             destination_layer_path_source_layer_mapping = {
                 destination_path: source_layer_path_source_layer_mapping[source_path]
