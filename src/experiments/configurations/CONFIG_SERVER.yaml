@@ -1,42 +1,65 @@
 ########################################    General configuration parameters    ########################################
 path_to_storage: "src/experiments/results"
 
-experiment_type: "original_layer_rank_analysis"
+#experiment_type: "single_null_layers_replacement_redundancy_analysis"
+experiment_type: "all_layer_couples_displacement_based_replacement_redundancy_analysis"
+#experiment_type: "resettable_elements_sorted_layers_compression_analysis_with_concatenated_matrices"
 
 version: 0
 
 #just_plot: True
 
 verbose: 1
-device: "cpu"
+device: "cuda"
 seed: 42
 
 ########################################     Model configuration parameters     ########################################
-model_id: "google/gemma-7b"
 #model_id: "mistralai/Mistral-7B-v0.3"
-#model_id: "meta-llama/Llama-3.1-8B"
+model_id: "meta-llama/Llama-3.1-8B"
 dtype: "float16"
+#model_id: "google/gemma-7b"
+#dtype: "float16"
 
 ########################################   Tokenizer configuration parameters   ########################################
-tokenizer_id: "google/gemma-7b"
+tokenizer_id: "meta-llama/Llama-3.1-8B"
 #tokenizer_id: "mistralai/Mistral-7B-v0.3"
-#tokenizer_id: "meta-llama/Llama-3.1-8B"
+#tokenizer_id: "google/gemma-7b"
 
 ########################################       Analysis target parameters       ########################################
 targets:
-    - ["gate_proj"]
-    - ["up_proj"]
-    - ["down_proj"]
+#    - ["block_index", "mlp"]
 
-    - ["q_proj"]
-    - ["k_proj"]
-    - ["v_proj"]
-    - ["o_proj"]
+    - ["block_index", "mlp", "gate_proj"]
+    - ["block_index", "mlp", "up_proj"]
+    - ["block_index", "mlp", "down_proj"]
+
+#    - ["block_index", "self_attn", "q_proj"]
+#    - ["block_index", "self_attn", "k_proj"]
+#    - ["block_index", "self_attn", "v_proj"]
+#    - ["block_index", "self_attn", "o_proj"]
+
+#    - ["layers", "block_index"]
+#    - ["layers", "block_index"]
+
+#num_layers: 28
+num_layers: 32
 
 ########################################        Visualization parameters        ########################################
 figure_size: [40, 40]
 
-########################################             Ranks analysis             ########################################
-singular_values_threshold: 0.
-explained_variance_threshold: 0.90
-relative_rank: True
+######################################## Layers replacement redundancy analysis ########################################
+benchmark_ids:
+#    - "hellaswag"
+    - "gsm8k"
+evaluation_args:
+    hellaswag:
+        batch_size: 32
+    gsm8k:
+        batch_size: 16
+
+########################################         Sorted layers analysis         ########################################
+#zero_threshold: 0.001
+#batch_size: 4
+#store_interval: 32
+
+#benchmark_id: "hellaswag"
