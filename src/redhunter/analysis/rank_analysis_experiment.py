@@ -1,3 +1,5 @@
+import copy
+
 import os
 
 import matplotlib.pyplot as plt
@@ -35,17 +37,39 @@ class RankAnalysis(AnalysisExperiment, ABC):
         """
 
         if self.get_data() is None:
-            # Extracting the matrices from the model
-            extracted_layers = self._extract_layers()
+            if self.is_low_memory_mode():
+                original_configuration = self.get_config()
+                for target in original_configuration.get("targets"):
+                    modified_configuration = copy.deepcopy(original_configuration)
+                    modified_configuration.set("targets", [target])
+                    self.set_config(modified_configuration)
 
-            # Processing the extracted matrices
-            preprocessed_tensors = self._preprocess_extracted_tensors(extracted_layers)
+                    # Extracting the matrices from the model
+                    extracted_layers = self._extract_layers()
 
-            # Computing the singular values and fraction of explained variance
-            results = self._compute_singular_values_on_analysis_dict(preprocessed_tensors)
+                    # Processing the extracted matrices
+                    preprocessed_tensors = self._preprocess_extracted_tensors(extracted_layers)
 
-            # Saving the singular values and explained variance
-            self.set_data(results, position=0)
+                    # Computing the singular values and fraction of explained variance
+                    results = self._compute_singular_values_on_analysis_dict(preprocessed_tensors)
+
+                    # Saving the singular values and explained variance
+                    if self.get_data() is not None:
+                        self.get_data()[0].update(results)
+                    self.set_data(results, position=0)
+                self.set_config(original_configuration)
+            else:
+                # Extracting the matrices from the model
+                extracted_layers = self._extract_layers()
+
+                # Processing the extracted matrices
+                preprocessed_tensors = self._preprocess_extracted_tensors(extracted_layers)
+
+                # Computing the singular values and fraction of explained variance
+                results = self._compute_singular_values_on_analysis_dict(preprocessed_tensors)
+
+                # Saving the singular values and explained variance
+                self.set_data(results, position=0)
 
         # Computing the rank
         results = self._compute_rank()
@@ -732,12 +756,15 @@ class AllDeltaLayersRankAnalysis(DeltaLayersRankAnalysis):
 
     def compute_all_delta_matrices(
             self,
+            all_delta_tensors: AnalysisTensorDict,
             tensors: list[AnalysisTensorWrapper],
     ) -> AnalysisTensorDict:
         """
         Compute the delta between each matrix and all the others.
 
         Args:
+            all_delta_tensors (AnalysisTensorDict):
+                Dictionary containing the delta matrices organized by the path of the minuend.
             tensors (list[AnalysisTensorWrapper]):
                 List of matrices.
 
@@ -748,18 +775,13 @@ class AllDeltaLayersRankAnalysis(DeltaLayersRankAnalysis):
 
         self.log("Computing all delta matrices...")
 
-        all_delta_tensors = AnalysisTensorDict()
         for i in range(len(tensors)):
             minuend_tensors = [tensors[i]] * len(tensors)
             subtrahend_tensors = tensors.copy()
 
             delta_tensors_minuend_i = self.compute_delta_matrices(minuend_tensors, subtrahend_tensors)
-            for j in range(len(subtrahend_tensors)):
-                if i != j:
-                    all_delta_tensors.append_tensor(
-                        (i, j, tensors[i].get_label(), tensors[j].get_label()),
-                        delta_tensors_minuend_i[j]
-                    )
+            key = minuend_tensors[0].get_path().copy()
+            all_delta_tensors.append_tensor(key, delta_tensors_minuend_i)
 
         return all_delta_tensors
 
@@ -777,11 +799,13 @@ class AllDeltaLayersRankAnalysis(DeltaLayersRankAnalysis):
                 The extracted matrices.
         """
 
+        # If the deltas have to be done between elements with different labels, the code has to be modified here by
+        # grouping layers differently.
+
+        preprocessed_tensors = AnalysisTensorDict()
         for label in extracted_tensors.get_keys():
             tensor_list = extracted_tensors.get_tensor_list(label)
-            all_delta_tensors = AnalysisTensorDict()
-            preprocessed_tensors = self.compute_all_delta_matrices(all_delta_tensors, tensor_list)
-            preprocessed_tensors.append_tensor(label, all_delta_tensors.get_tensor_list())
+            self.compute_all_delta_matrices(preprocessed_tensors, tensor_list)
 
         return preprocessed_tensors
 
@@ -807,9 +831,9 @@ class AllDeltaLayersRankAnalysis(DeltaLayersRankAnalysis):
         results = data[0]
         kwargs = super().get_kwargs_plot_singular_values_distribution(config, data)
         kwargs.update({label: {
-            "title": f"Singular values and fraction of explained variance difference between consecutive layers with label '{" ".join(label)}' of the model '{config.get("model_id")}",
-            "sv_title": f"Singular values of the tensors with label '{" ".join(label)}'",
-            "ev_title": f"Fraction of explained variance of the tensors with label '{" ".join(label)}'"
+            "title": f"Singular values and fraction of explained variance of the difference between layer {" ".join(label)} in block at index {" ".join(label)} and the other layers of the model '{config.get("model_id")}",
+            "sv_title": f"Singular values of the difference between layer {" ".join(label)} and the other layers of the model '{config.get("model_id")}",
+            "ev_title": f"Fraction of explained variance of the difference between layer {" ".join(label)} and the other layers of the model '{config.get("model_id")}",
         } for label in results.keys()})
 
         return kwargs
