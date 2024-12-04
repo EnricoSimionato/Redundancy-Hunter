@@ -45,7 +45,7 @@ class ModelBasicAnalysis(AnalysisExperiment):
                 The black list. Defaults to ().
         """
 
-        self.log(f"Model loaded: \n\n{model}")
+        self.log(f"Model loaded: \n\n{model}", print_message=True)
 
         extracted_layers = AnalysisTensorDict()
         extract(model, target_layers, extracted_layers, black_list=black_list)
@@ -53,15 +53,15 @@ class ModelBasicAnalysis(AnalysisExperiment):
         for key in extracted_layers.get_keys():
             layers = extracted_layers.get_tensor_list(key)
             for layer in layers:
-                print("Printing the name of the layer:")
-                print(f"    {layer.get_name()}")
-                print("Printing the path of the layer:")
-                print(f"    {layer.get_path()}")
-                print("Printing the layer:")
-                print(f"    {layer.get_layer()}")
-                print("Printing the shape of the layer's weight")
+                self.log("Printing the name of the layer:", print_message=True)
+                self.log(f"    {layer.get_name()}", print_message=True)
+                self.log("Printing the path of the layer:", print_message=True)
+                self.log(f"    {layer.get_path()}", print_message=True)
+                self.log("Printing the layer:", print_message=True)
+                self.log(f"    {layer.get_layer()}", print_message=True)
+                self.log("Printing the shape of the layer's weight", print_message=True)
 
-                print("------------------------------------------------------------------------------------------")
+                self.log("------------------------------------------------------------------------------------------")
 
     def _postprocess_results(
             self
