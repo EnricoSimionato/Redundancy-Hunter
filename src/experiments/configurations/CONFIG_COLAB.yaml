@@ -56,6 +56,8 @@ benchmark_ids:
 #    - "hellaswag"
 #    - "gsm8k"
 evaluation_args:
+    truthfulqa_mc1:
+        batch_size: 16
     hellaswag:
         batch_size: 32
     gsm8k:
