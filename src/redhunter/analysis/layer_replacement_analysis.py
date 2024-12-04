@@ -24,7 +24,7 @@ from exporch.experiment import benchmark_id_metric_name_mapping, evaluate_model_
 from exporch.utils.general_framework_utils import get_datamodule
 from exporch.utils.plot_utils.heatmap import plot_heatmap
 
-from redhunter.analysis.layer_replacement_analysis_utils import LayerReplacingModelWrapper, \
+from redhunter.utils.layer_replacement_wrapper.layer_replacement_wrapper import LayerReplacingModelWrapper, \
     NullLayerReplacingModelWrapper
 from redhunter.analysis_experiment import AnalysisExperiment
 

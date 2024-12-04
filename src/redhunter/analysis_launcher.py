@@ -2,6 +2,7 @@ import sys
 
 from exporch import GeneralPurposeExperimentFactory
 
+from redhunter.analysis.basic_model_analysis import ModelBasicAnalysis
 from redhunter.analysis.layer_replacement_analysis import (
     SingleNullLayersReplacementAnalysis,
 
@@ -17,7 +18,7 @@ from redhunter.analysis.layer_replacement_analysis import (
 
     PerplexityLayerReplacementAnalysis
 )
-from redhunter.analysis.rank_analysis_experiment import (
+from redhunter.analysis.rank_analysis import (
     OriginalLayersRankAnalysis,
     ConcatenatedLayersRankAnalysis,
 
@@ -31,6 +32,8 @@ from redhunter.analysis.sorted_layers_compression_analysis import (
 
 
 GeneralPurposeExperimentFactory.register({
+    "model_basic_analysis": ModelBasicAnalysis,
+
     "single_null_layers_replacement_redundancy_analysis": SingleNullLayersReplacementAnalysis,
 
     "all_layer_couples_replacement_redundancy_analysis": AllLayerCouplesReplacementAnalysis,

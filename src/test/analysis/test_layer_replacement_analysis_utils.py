@@ -3,7 +3,7 @@ import torch
 from exporch import Config
 from exporch.utils.causal_language_modeling import load_model_for_causal_lm
 
-from redhunter.analysis.layer_replacement_analysis_utils import LayerReplacingModelWrapper, NullLayerReplacingModelWrapper
+from redhunter.utils.layer_replacement_wrapper.layer_replacement_wrapper import LayerReplacingModelWrapper, NullLayerReplacingModelWrapper
 
 
 class TestLayerReplacingModelWrapper:

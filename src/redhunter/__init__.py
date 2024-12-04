@@ -4,7 +4,7 @@ __all__ = [
     "NullLayerReplacingModelWrapper"
 ]
 
-from redhunter.analysis.layer_replacement_analysis_utils import (
+from redhunter.utils.layer_replacement_wrapper.layer_replacement_wrapper import (
     LayerReplacingModelWrapper,
     ProcessedLayerReplacingModelWrapper,
     NullLayerReplacingModelWrapper
