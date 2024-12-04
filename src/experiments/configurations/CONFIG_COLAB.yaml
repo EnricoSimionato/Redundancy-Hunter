@@ -18,7 +18,7 @@ seed: 42
 #model_id: "mistralai/Mistral-7B-v0.3"
 #model_id: "meta-llama/Llama-3.1-8B"
 #dtype: "float16"
-quantization: "8bit"
+quantization: "4bit"
 model_id: "google/gemma-2-2b"
 #model_id: "google/gemma-7b"
 #dtype: "float16"
