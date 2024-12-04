@@ -45,15 +45,15 @@ targets:
 #    - ["layers", "block_index"]
 
 #num_layers: 28
-num_layers: 32
+num_layers: 26
 
 ########################################        Visualization parameters        ########################################
 figure_size: [40, 40]
 
 ######################################## Layers replacement redundancy analysis ########################################
 benchmark_ids:
-    - "truthfulqa_mc1"
-#    - "hellaswag"
+#    - "truthfulqa_mc1"
+    - "hellaswag"
 #    - "gsm8k"
 evaluation_args:
     truthfulqa_mc1:
