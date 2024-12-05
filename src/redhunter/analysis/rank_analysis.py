@@ -305,7 +305,8 @@ class RankAnalysis(AnalysisExperiment, ABC):
                 singular_values = results[label][tensor_key]["singular_values"]
                 explained_variance = results[label][tensor_key]["explained_variance"]
 
-                plot_color = "red" if idx == 0 else color
+                plot_color = self.config.get("first_color", color) if idx == 0 else color
+                plot_color = self.config.get("last_color", plot_color) if idx == len(results[label].keys()) - 1 else plot_color
 
                 ax[0].plot(singular_values, label=tensor_key, color=plot_color)
                 ax[1].plot(explained_variance, label=tensor_key, color=plot_color)
