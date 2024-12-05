@@ -349,7 +349,7 @@ class RankAnalysis(AnalysisExperiment, ABC):
 
             plt.tight_layout()
             # Saving the plot
-            storage_path = str(os.path.join(self.get_experiment_path(), f"singular_values_distribution_{"_".join(label)}.pdf"))
+            storage_path = str(os.path.join(self.get_experiment_path(), f"{config.get("model_id")}_singular_values_distribution_{"_".join(label)}.pdf"))
             plt.savefig(storage_path, format="pdf")
 
     def _plot_rank_analysis(
@@ -383,7 +383,7 @@ class RankAnalysis(AnalysisExperiment, ABC):
         relative_rank = config.get("relative_rank") if config.contains("relative_rank") else False
         fig_size = config.get("figure_size") if config.contains("figure_size") else (10, 10)
         heatmap_name = config.get("heatmap_name") if config.contains("heatmap_name") else "heatmap"
-        heatmap_name += "_expvar_" + str(explained_variance_threshold).replace('.', '_') + "_sv_" + str(singular_values_threshold).replace('.', '_')
+        heatmap_name += "_" + config.get("model_id").split("/")[-1] + "_expvar_" + str(explained_variance_threshold).replace('.', '_') + "_sv_" + str(singular_values_threshold).replace('.', '_')
         key_arguments = {
             "title": "Rank analysis of the matrices of the model" + f" (explained variance threshold: {explained_variance_threshold})",
             "axes_displacement" : "column",
