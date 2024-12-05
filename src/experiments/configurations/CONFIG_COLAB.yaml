@@ -1,5 +1,6 @@
 ########################################    General configuration parameters    ########################################
 path_to_storage: "/content/drive/MyDrive/Thesis"
+low_memory_mode: False
 version: 0
 
 verbose: 1
