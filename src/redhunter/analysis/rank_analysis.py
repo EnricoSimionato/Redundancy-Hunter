@@ -349,7 +349,7 @@ class RankAnalysis(AnalysisExperiment, ABC):
 
             plt.tight_layout()
             # Saving the plot
-            storage_path = str(os.path.join(self.get_experiment_path(), f"{config.get("model_id")}_singular_values_distribution_{"_".join(label)}.pdf"))
+            storage_path = str(os.path.join(self.get_experiment_path(), f"{config.get("model_id").split("/")[-1]}_singular_values_distribution_{"_".join(label)}.pdf"))
             plt.savefig(storage_path, format="pdf")
 
     def _plot_rank_analysis(
