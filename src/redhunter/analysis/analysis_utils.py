@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-import re
 from typing import Any
 
 import numpy as np
@@ -657,9 +656,12 @@ class AnalysisTensorWrapper:
             raise ValueError("The singular values must be computed before computing the explained variance.")
 
         if s[0] == 0.:
-            return np.ones(len(s))
+            fraction_explained_variance = np.ones(len(s))
+        else:
+            fraction_explained_variance = (np.square(s) * scaling).cumsum() / (np.square(s) * scaling).sum()
+        fraction_explained_variance = np.insert(fraction_explained_variance, 0, 0.0)
 
-        return (np.square(s) * scaling).cumsum() / (np.square(s) * scaling).sum()
+        return fraction_explained_variance
 
     def _perform_rank_analysis(
             self,
