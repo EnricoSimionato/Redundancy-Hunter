@@ -55,7 +55,9 @@ class RankAnalysis(AnalysisExperiment, ABC):
 
                     # Saving the singular values and explained variance
                     if self.get_data() is not None:
-                        self.get_data()[0].update(results)
+                        data = self.get_data()[0].copy()
+                        data.update(results)
+                        results = data
                     self.set_data(results, position=0)
                 self.set_config(original_configuration)
             else:
