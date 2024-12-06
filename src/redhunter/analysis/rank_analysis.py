@@ -1,12 +1,11 @@
-import copy
-
-import os
-
-import matplotlib.pyplot as plt
 from abc import ABC, abstractmethod
+import copy
+import gc
+import os
 from typing import Any, override
 
 from matplotlib.cm import get_cmap
+import matplotlib.pyplot as plt
 
 import numpy as np
 
@@ -104,6 +103,8 @@ class RankAnalysis(AnalysisExperiment, ABC):
             verbose=config.get_verbose()
         )
         self.log("Layers extracted.")
+        del model
+        gc.collect()
 
         return extracted_layers
 
