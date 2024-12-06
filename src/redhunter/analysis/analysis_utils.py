@@ -226,9 +226,12 @@ class AnalysisTensorWrapper:
                 The path of the tensor.
         """
 
+        path = [""] if self.path is None else self.path
+
         if string:
-            return " ".join(self.path)
-        return self.path
+            return " ".join(path)
+
+        return path
 
     def get_block_index(
             self

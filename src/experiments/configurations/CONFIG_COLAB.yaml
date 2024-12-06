@@ -10,10 +10,10 @@ seed: 42
 #just_plot: True
 
 ########################################          Parameters gemma-2-2b         ########################################
-#model_id: "google/gemma-2-2b"
-#dtype: "float16"
-#tokenizer_id: "google/gemma-2-2b"
-#num_layers: 26
+model_id: "google/gemma-2-2b"
+dtype: "float16"
+tokenizer_id: "google/gemma-2-2b"
+num_layers: 26
 
 ########################################          Parameters gemma-2-9b         ########################################
 #model_id: "google/gemma-2-9b"
@@ -22,10 +22,10 @@ seed: 42
 #num_layers: 42
 
 ########################################           Parameters gemma-7b          ########################################
-model_id: "google/gemma-7b"
-dtype: "float16"
-tokenizer_id: "google/gemma-7b"
-num_layers: 28
+#model_id: "google/gemma-7b"
+#dtype: "float16"
+#tokenizer_id: "google/gemma-7b"
+#num_layers: 28
 
 ########################################         Parameters Llama-3.1-8B        ########################################
 #model_id: "meta-llama/Llama-3.1-8B"

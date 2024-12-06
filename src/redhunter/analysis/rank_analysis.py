@@ -162,7 +162,7 @@ class RankAnalysis(AnalysisExperiment, ABC):
                 The singular values of the tensors.
         """
 
-        self.log("Computing the singular values of the layers.")
+        self.log("Computing the singular values of the layers.", print_message=True)
         results = analyzed_tensors.compute_singular_values()
 
         return results
@@ -181,7 +181,7 @@ class RankAnalysis(AnalysisExperiment, ABC):
         if self.get_data() is None:
             raise Exception("The singular values of the layers must be computed before computing the rank.")
 
-        self.log("Computing the rank of the layers.")
+        self.log("Computing the rank of the layers.", print_message=True)
 
         explained_variance_threshold = self.get_config().get("explained_variance_threshold") if self.get_config().contains("explained_variance_threshold") else 1.
         singular_values_threshold = self.get_config().get("singular_values_threshold") if self.get_config().contains("singular_values_threshold") else 0.
@@ -191,6 +191,7 @@ class RankAnalysis(AnalysisExperiment, ABC):
 
         singular_values_explained_variance = self.get_data()[0]
         for label in singular_values_explained_variance.keys():
+            self.log(f"Computing the rank of the tensors with label '{' '.join(label)}'.", print_message=True)
             for tensor_key in singular_values_explained_variance[label]:
                 singular_values = singular_values_explained_variance[label][tensor_key]["singular_values"]
                 explained_variance = singular_values_explained_variance[label][tensor_key]["explained_variance"]
@@ -342,7 +343,7 @@ class RankAnalysis(AnalysisExperiment, ABC):
 
             # Setting the explained variance plot properties
             ax[1].set_title(key_arguments[label]["ev_title"])
-            ax[1].set_xlabel("Singular value index")
+            ax[1].set_xlabel("Number of singular values considered")
             ax[1].set_ylabel("Fraction of explained variance")
             ax[1].legend()
             ax[1].grid(True)
@@ -378,12 +379,13 @@ class RankAnalysis(AnalysisExperiment, ABC):
         layer_types = list(results.keys())
         number_of_blocks = len(list(results.values())[0].keys())
 
-        explained_variance_threshold = config.get("explained_variance_threshold")
-        singular_values_threshold = config.get("singular_values_threshold")
+        explained_variance_threshold = config.get("explained_variance_threshold") if config.contains("explained_variance_threshold") else 1.
+        singular_values_threshold = config.get("singular_values_threshold") if config.contains("singular_values_threshold") else 0.
         relative_rank = config.get("relative_rank") if config.contains("relative_rank") else False
         fig_size = config.get("figure_size") if config.contains("figure_size") else (10, 10)
-        heatmap_name = config.get("heatmap_name") if config.contains("heatmap_name") else "heatmap"
-        heatmap_name += "_" + config.get("model_id").split("/")[-1] + "_expvar_" + str(explained_variance_threshold).replace('.', '_') + "_sv_" + str(singular_values_threshold).replace('.', '_')
+        heatmap_name = config.get("model_id").split("/")[-1]
+        heatmap_name += "_" + config.get("heatmap_name") if config.contains("heatmap_name") else "_heatmap"
+        heatmap_name += "_expvar_" + str(explained_variance_threshold).replace('.', '_') + "_sv_" + str(singular_values_threshold).replace('.', '_')
         key_arguments = {
             "title": "Rank analysis of the matrices of the model" + f" (explained variance threshold: {explained_variance_threshold})",
             "axes_displacement" : "column",
@@ -516,9 +518,20 @@ class ConcatenatedLayersRankAnalysis(TypeSortedRankAnalysis):
 
         preprocessed_tensors = AnalysisTensorDict()
         for label in extracted_tensors.get_keys():
-            preprocessed_tensors = extracted_tensors.get_tensor_list(label)
-            concatenated_tensor = torch.cat([extracted_tensors[label][i].get_tensor() for i in range(len(extracted_tensors[label]))], dim=0)
-            preprocessed_tensors.append_tensor(label, [AnalysisTensorWrapper(concatenated_tensor, name=label, label=label, block_index=0)])
+            extracted_tensors_label = extracted_tensors.get_tensor_list(label)
+            concatenated_tensors_row_wise = torch.cat(
+                [extracted_tensor.get_tensor() for extracted_tensor in extracted_tensors_label], dim=1)
+            concatenated_tensors_column_wise = torch.cat(
+                [extracted_tensor.get_tensor() for extracted_tensor in extracted_tensors_label], dim=0)
+            paths = [["block index" if item.isdigit() else item for item in extracted_tensor.get_path()] for extracted_tensor in extracted_tensors_label]
+            paths = [list(x) for x in set(tuple(sublist) for sublist in paths)]
+            path = sum(([item] if i == 0 else ["&", item] for i, sublist in enumerate(paths) for item in sublist), [])
+            label_row_wise = ["row-wise concatenation",]
+            label_column_wise = ["column-wise concatenation",]
+            label_row_wise.extend(label)
+            label_column_wise.extend(label)
+            preprocessed_tensors.append_tensor(label_row_wise, [AnalysisTensorWrapper(concatenated_tensors_row_wise, path=path, name=label[0], label=f"concatenated {label[0]}", block_index=0)])
+            preprocessed_tensors.append_tensor(label_column_wise, [AnalysisTensorWrapper(concatenated_tensors_column_wise, path=path, name=label[0], label=f"concatenated {label[0]}", block_index=0)])
 
         return preprocessed_tensors
 
