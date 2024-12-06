@@ -3,7 +3,7 @@ path_to_storage: "src/experiments/results"
 version: 0
 
 verbose: 1
-device: "cpu"
+device: "cuda"
 seed: 42
 
 #just_plot: True
