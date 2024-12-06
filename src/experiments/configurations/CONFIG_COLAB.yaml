@@ -43,11 +43,11 @@ num_layers: 26
 #experiment_type: "model_basic_analysis"
 
 ########################################              Rank analysis             ########################################
-experiment_type: "original_layer_rank_analysis"
+#experiment_type: "original_layer_rank_analysis"
 #experiment_type: "delta_consecutive_layers_rank_analysis"
 #experiment_type: "delta_layers_wrt_average_layer_rank_analysis"
 #experiment_type: "all_delta_layers_rank_analysis"
-#experiment_type: "concatenated_layer_rank_analysis"
+experiment_type: "concatenated_layer_rank_analysis"
 
 ########################################       Layer replacement analysis       ########################################
 #experiment_type: "single_null_layers_replacement_redundancy_analysis"
