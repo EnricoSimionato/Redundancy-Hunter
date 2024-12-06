@@ -28,16 +28,16 @@ seed: 42
 #num_layers: 28
 
 ########################################         Parameters Llama-3.1-8B        ########################################
-model_id: "meta-llama/Llama-3.1-8B"
-dtype: "float16"
-tokenizer_id: "meta-llama/Llama-3.1-8B"
-num_layers: 32
+#model_id: "meta-llama/Llama-3.1-8B"
+#dtype: "float16"
+#tokenizer_id: "meta-llama/Llama-3.1-8B"
+#num_layers: 32
 
 ########################################       Parameters Mistral-7B-v0.3       ########################################
-#model_id: "mistralai/Mistral-7B-v0.3"
-#dtype: "float16"
-#tokenizer_id: "mistralai/Mistral-7B-v0.3"
-#num_layers: 32
+model_id: "mistralai/Mistral-7B-v0.3"
+dtype: "float16"
+tokenizer_id: "mistralai/Mistral-7B-v0.3"
+num_layers: 32
 
 ########################################     Basic model analysis experiment    ########################################
 #experiment_type: "model_basic_analysis"
