@@ -98,10 +98,10 @@ targets:
     - ["block_index", "mlp", "up_proj"]
     - ["block_index", "mlp", "down_proj"]
 
-    - ["block_index", "self_attn", "q_proj"]
-    - ["block_index", "self_attn", "k_proj"]
-    - ["block_index", "self_attn", "v_proj"]
-    - ["block_index", "self_attn", "o_proj"]
+#    - ["block_index", "self_attn", "q_proj"]
+#    - ["block_index", "self_attn", "k_proj"]
+#    - ["block_index", "self_attn", "v_proj"]
+#    - ["block_index", "self_attn", "o_proj"]
 figure_size: [40, 40]
 
 ########################################  Layer replacement perplexity analysis ########################################
