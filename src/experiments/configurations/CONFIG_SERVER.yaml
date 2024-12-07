@@ -3,7 +3,7 @@ path_to_storage: "src/experiments/results"
 version: 1
 
 verbose: 1
-device: "gpu"
+device: "cuda"
 seed: 42
 
 #just_plot: True
@@ -98,6 +98,7 @@ targets:
     - ["block_index", "mlp", "up_proj"]
     - ["block_index", "mlp", "down_proj"]
 
+#    - ["block_index", "self_attn"]
 #    - ["block_index", "self_attn", "q_proj"]
 #    - ["block_index", "self_attn", "k_proj"]
 #    - ["block_index", "self_attn", "v_proj"]
