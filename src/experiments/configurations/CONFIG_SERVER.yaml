@@ -3,22 +3,22 @@ path_to_storage: "src/experiments/results"
 version: 0
 
 verbose: 1
-device: "cuda"
+device: "cpu"
 seed: 42
 
 #just_plot: True
 
 ########################################          Parameters gemma-2-2b         ########################################
-model_id: "google/gemma-2-2b"
-dtype: "float16"
-tokenizer_id: "google/gemma-2-2b"
-num_layers: 26
+#model_id: "google/gemma-2-2b"
+#dtype: "float16"
+#tokenizer_id: "google/gemma-2-2b"
+#num_layers: 26
 
 ########################################          Parameters gemma-2-9b         ########################################
-#model_id: "google/gemma-2-9b"
-#dtype: "float16"
-#tokenizer_id: "google/gemma-2-9b"
-#num_layers: 42
+model_id: "google/gemma-2-9b"
+dtype: "float16"
+tokenizer_id: "google/gemma-2-9b"
+num_layers: 42
 
 ########################################           Parameters gemma-7b          ########################################
 #model_id: "google/gemma-7b"
@@ -46,13 +46,13 @@ num_layers: 26
 #experiment_type: "delta_consecutive_layers_rank_analysis"
 #experiment_type: "delta_layers_wrt_average_layer_rank_analysis"
 #experiment_type: "all_delta_layers_rank_analysis"
-#experiment_type: "concatenated_layer_rank_analysis"
+experiment_type: "concatenated_layer_rank_analysis"
 
 ########################################       Layer replacement analysis       ########################################
 #experiment_type: "single_null_layers_replacement_redundancy_analysis"
 
 #experiment_type: "all_layer_couples_replacement_redundancy_analysis"
-experiment_type: "all_layer_couples_displacement_based_replacement_redundancy_analysis"
+#experiment_type: "all_layer_couples_displacement_based_replacement_redundancy_analysis"
 #experiment_type: "specific_displacement_layer_replacement_redundancy_analysis"
 #experiment_type: "specific_replaced_layer_replacement_redundancy_analysis"
 #experiment_type: "specific_replacing_layer_replacement_redundancy_analysis"
@@ -62,47 +62,47 @@ experiment_type: "all_layer_couples_displacement_based_replacement_redundancy_an
 #experiment_type: "perplexity_layer_replacement_redundancy_analysis"
 
 ########################################             Ranks analysis             ########################################
-#singular_values_threshold: 0.
-#explained_variance_threshold: 0.90
-#relative_rank: True
+singular_values_threshold: 0.
+explained_variance_threshold: 0.90
+relative_rank: True
 
-#first_color: "red"
-#last_color: "orange"
-
-#targets:
-#    - ["gate_proj"]
-#    - ["up_proj"]
-#    - ["down_proj"]
-
-#    - ["q_proj"]
-#    - ["k_proj"]
-#    - ["v_proj"]
-#    - ["o_proj"]
-#figure_size: [40, 40]
-
-########################################       Layer replacement analysis       ########################################
-benchmark_ids:
-#    - "truthfulqa_mc1"
-    - "hellaswag"
-#    - "gsm8k"
-evaluation_args:
-    truthfulqa_mc1:
-        batch_size: 32
-    hellaswag:
-        batch_size: 32
-    gsm8k:
-        batch_size: 16
+first_color: "red"
+last_color: "orange"
 
 targets:
-    - ["block_index", "mlp", "gate_proj"]
-    - ["block_index", "mlp", "up_proj"]
-    - ["block_index", "mlp", "down_proj"]
+    - ["gate_proj"]
+    - ["up_proj"]
+    - ["down_proj"]
+
+    - ["q_proj"]
+    - ["k_proj"]
+    - ["v_proj"]
+    - ["o_proj"]
+figure_size: [40, 40]
+
+########################################       Layer replacement analysis       ########################################
+#benchmark_ids:
+#    - "truthfulqa_mc1"
+#    - "hellaswag"
+#    - "gsm8k"
+#evaluation_args:
+#    truthfulqa_mc1:
+#        batch_size: 32
+#    hellaswag:
+#        batch_size: 32
+#    gsm8k:
+#        batch_size: 16
+
+#targets:
+#    - ["block_index", "mlp", "gate_proj"]
+#    - ["block_index", "mlp", "up_proj"]
+#    - ["block_index", "mlp", "down_proj"]
 
 #    - ["block_index", "self_attn", "q_proj"]
 #    - ["block_index", "self_attn", "k_proj"]
 #    - ["block_index", "self_attn", "v_proj"]
 #    - ["block_index", "self_attn", "o_proj"]
-figure_size: [40, 40]
+#figure_size: [40, 40]
 
 ########################################  Layer replacement perplexity analysis ########################################
 #benchmark_ids:
