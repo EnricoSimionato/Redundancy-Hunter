@@ -83,15 +83,15 @@ experiment_type: "all_layer_couples_displacement_based_replacement_redundancy_an
 ########################################       Layer replacement analysis       ########################################
 benchmark_ids:
 #    - "truthfulqa_mc1"
-    - "hellaswag"
-#    - "gsm8k"
+#    - "hellaswag"
+    - "gsm8k"
 evaluation_args:
     truthfulqa_mc1:
         batch_size: 32
     hellaswag:
         batch_size: 32
     gsm8k:
-        batch_size: 16
+        batch_size: 32
 
 targets:
     - ["block_index", "mlp", "gate_proj"]
