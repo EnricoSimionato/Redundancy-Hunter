@@ -9,11 +9,12 @@ import torch
 import transformers
 
 from exporch.utils.parameters_count import count_parameters
-from exporch.utils import LoggingInterface
+from exporch.wrapping.model_wrapper import ModelWrapper
+
 from redhunter.utils.list_utils.list_utils import is_subsequence
 
 
-class LayerReplacingModelWrapper(LoggingInterface):
+class LayerReplacingModelWrapper(ModelWrapper):
     """
     Class to replace layers in a model with other layers of the same model.
 
@@ -45,6 +46,7 @@ class LayerReplacingModelWrapper(LoggingInterface):
             destination_layer_path_source_layer_path_mapping: dict[list | tuple: list | tuple | Any] = None,
     ) -> None:
         super().__init__()
+
         self.model = model
         self.destination_layer_path_source_layer_path_mapping = destination_layer_path_source_layer_path_mapping
         self.overwritten_layers = {}
@@ -60,18 +62,26 @@ class LayerReplacingModelWrapper(LoggingInterface):
         print(self.model)
         print("Model converted")
 
-    def get_model(
-            self
-    ) -> [transformers.PreTrainedModel | transformers.AutoModel]:
+    def forward(
+            self,
+            *args,
+            **kwargs
+    ) -> Any:
         """
-        Returns the model.
+        Forwards the input through the model.
+
+        Args:
+            *args:
+                The input to the model.
+            **kwargs:
+                The keyword arguments to the model.
 
         Returns:
-            [transformers.PreTrainedModel | transformers.AutoModel]:
-                The wrapped model.
+            Any:
+                The output of the model.
         """
 
-        return self.model
+        return self.model(*args, **kwargs)
 
     def get_destination_layer_path_source_layer_path_mapping(
             self
