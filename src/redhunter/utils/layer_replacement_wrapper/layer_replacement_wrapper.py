@@ -13,6 +13,8 @@ from exporch.wrapping.model_wrapper import ModelWrapper
 
 from redhunter.utils.list_utils.list_utils import is_subsequence
 
+from collections import OrderedDict
+
 
 class LayerReplacingModelWrapper(ModelWrapper):
     """
@@ -137,7 +139,8 @@ class LayerReplacingModelWrapper(ModelWrapper):
         Replaces the layers in the model based on the mapping.
         """
 
-        source_paths = set(self.get_destination_layer_path_source_layer_path_mapping().values())
+
+        source_paths = list(OrderedDict.fromkeys(self.get_destination_layer_path_source_layer_path_mapping().values()))
         if len(source_paths) != 0 and not all([isinstance(source_path, type(list(source_paths)[0])) for source_path in source_paths]):
             raise Exception("The source paths must be of the same type.")
         if len(source_paths) != 0 and (isinstance(list(source_paths)[0], list) or isinstance(list(source_paths)[0], tuple)):
