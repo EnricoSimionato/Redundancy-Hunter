@@ -327,7 +327,7 @@ class LayerReplacementAnalysis(AnalysisExperiment):
             self.log(f"Printing the results for task: {benchmark_id}")
             plot_heatmap(
                 [[post_processed_results_list[benchmark_id]]],
-                os.path.join(self.get_experiment_path(), f"heatmap_{benchmark_id}.png"),
+                os.path.join(self.get_experiment_path(), f"heatmap_{benchmark_id}.pdf"),
                 f"Results for the model {config.get('model_id').split('/')[-1]} on the task {benchmark_id}",
                 axis_titles=[f"Metric: {benchmark_id_metric_name_mapping[benchmark_id]}"],
                 x_title="Overwritten layers labels",
@@ -342,7 +342,7 @@ class LayerReplacementAnalysis(AnalysisExperiment):
             plot_heatmap(
                 [[(post_processed_results_list[benchmark_id] >= post_processed_results_list[benchmark_id][0, 0]) *
                   post_processed_results_list[benchmark_id]]],
-                os.path.join(self.get_experiment_path(), f"heatmap_{benchmark_id}_greater_baseline.png"),
+                os.path.join(self.get_experiment_path(), f"heatmap_{benchmark_id}_greater_baseline.pdf"),
                 f"Models with better performance than the original one ({config.get('model_id').split('/')[-1]}) on the task {benchmark_id}",
                 axis_titles=["Coloured cells represent models with better performance than the original one"],
                 x_title="Overwritten layers labels",
