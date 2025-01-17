@@ -1,6 +1,6 @@
 ########################################    General configuration parameters    ########################################
 path_to_storage: "src/experiments/results"
-version: 3
+version: 2
 
 verbose: 1
 device: "cuda"
@@ -49,10 +49,10 @@ num_layers: 26
 #experiment_type: "concatenated_layer_rank_analysis"
 
 ########################################       Layer replacement analysis       ########################################
-experiment_type: "single_null_layers_replacement_redundancy_analysis"
+#experiment_type: "single_null_layers_replacement_redundancy_analysis"
 
 #experiment_type: "all_layer_couples_replacement_redundancy_analysis"
-#experiment_type: "all_layer_couples_displacement_based_replacement_redundancy_analysis"
+experiment_type: "all_layer_couples_displacement_based_replacement_redundancy_analysis"
 #experiment_type: "specific_displacement_layer_replacement_redundancy_analysis"
 #experiment_type: "specific_replaced_layer_replacement_redundancy_analysis"
 #experiment_type: "specific_replacing_layer_replacement_redundancy_analysis"
@@ -83,8 +83,8 @@ experiment_type: "single_null_layers_replacement_redundancy_analysis"
 ########################################       Layer replacement analysis       ########################################
 benchmark_ids:
 #    - "truthfulqa_mc1"
-#    - "hellaswag"
-    - "gsm8k"
+    - "hellaswag"
+#    - "gsm8k"
 evaluation_args:
     truthfulqa_mc1:
         batch_size: 32
