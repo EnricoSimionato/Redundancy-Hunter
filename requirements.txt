@@ -1,7 +1,11 @@
 numpy
 seaborn
 torch
+<<<<<<< HEAD
 transformers==4.46.2
+=======
+transformers==4.32.0
+>>>>>>> origin/master
 sentencepiece
 protobuf
 
