@@ -49,15 +49,18 @@ num_layers: 32
 #experiment_type: "concatenated_layer_rank_analysis"
 
 ########################################       Layer replacement analysis       ########################################
-#experiment_type: "single_null_layers_replacement_redundancy_analysis"
+experiment_type: "single_null_layers_replacement_redundancy_analysis"
+visible_y_title: false
+figure_size: [40, 12]
 
 #experiment_type: "all_layer_couples_replacement_redundancy_analysis"
-experiment_type: "all_layer_couples_displacement_based_replacement_redundancy_analysis"
+#experiment_type: "all_layer_couples_displacement_based_replacement_redundancy_analysis"
 #experiment_type: "specific_displacement_layer_replacement_redundancy_analysis"
 #experiment_type: "specific_replaced_layer_replacement_redundancy_analysis"
 #experiment_type: "specific_replacing_layer_replacement_redundancy_analysis"
 #experiment_type: "same_layer_couples_replacement_redundancy_analysis"
 #experiment_type: "all_layers_replacement_redundancy_analysis"
+#figure_size: [40, 40]
 
 #experiment_type: "perplexity_layer_replacement_redundancy_analysis"
 
@@ -103,7 +106,6 @@ targets:
 #    - ["block_index", "self_attn", "k_proj"]
 #    - ["block_index", "self_attn", "v_proj"]
 #    - ["block_index", "self_attn", "o_proj"]
-figure_size: [40, 40]
 
 ########################################  Layer replacement perplexity analysis ########################################
 #benchmark_ids:

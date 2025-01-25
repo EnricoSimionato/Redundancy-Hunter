@@ -315,6 +315,8 @@ class LayerReplacementAnalysis(AnalysisExperiment):
         self._postprocess_results()
 
         fig_size = config.get("figure_size") if config.contains("figure_size") else (36, 36)
+        visible_x_title = config.get("visible_x_title") if config.contains("visible_x_title") else True
+        visible_y_title = config.get("visible_y_title") if config.contains("visible_y_title") else True
         destination_layer_path_source_layer_path_mapping_list, performance_dict = data
 
         # Extracting the results for the original model
@@ -330,8 +332,8 @@ class LayerReplacementAnalysis(AnalysisExperiment):
                 os.path.join(self.get_experiment_path(), f"heatmap_{benchmark_id}.pdf"),
                 f"Results for the model {config.get('model_id').split('/')[-1]} on the task {benchmark_id}",
                 axis_titles=[f"Metric: {benchmark_id_metric_name_mapping[benchmark_id]}"],
-                x_title="Overwritten layers labels",
-                y_title="Duplicated layers labels",
+                x_title="Overwritten layers labels" if visible_x_title else "",
+                y_title="Duplicated layers labels"  if visible_y_title else "",
                 x_labels=[overwritten_layers_labels_list[benchmark_id]],
                 y_labels=[duplicated_layers_labels_list[benchmark_id]],
                 fig_size=fig_size,
@@ -588,8 +590,12 @@ class SingleNullLayersReplacementAnalysis(LayerReplacementAnalysis):
                 (np.array([[original_model_performance]]), performance_arrays[benchmark_id]), axis=1
             )
             destination_paths[benchmark_id] = ["Original model"] + destination_paths[benchmark_id]
+        formatted_source_paths = {benchmark_id: [] for benchmark_id in source_paths.keys()}
+        for benchmark_id in source_paths.keys():
+            if source_paths[benchmark_id] == ["[]",]:
+                formatted_source_paths[benchmark_id] = ["",]
 
-        return source_paths, destination_paths, performance_arrays
+        return formatted_source_paths, destination_paths, performance_arrays
 
 
 class AllLayerCouplesReplacementAnalysis(LayerReplacementAnalysis):
