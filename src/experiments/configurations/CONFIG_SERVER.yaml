@@ -1,6 +1,6 @@
 ########################################    General configuration parameters    ########################################
 path_to_storage: "src/experiments/results"
-version: 4
+version: 5
 
 verbose: 1
 device: "cuda"
@@ -86,8 +86,8 @@ figure_size: [40, 12]
 ########################################       Layer replacement analysis       ########################################
 benchmark_ids:
 #    - "truthfulqa_mc1"
-    - "hellaswag"
-#    - "gsm8k"
+#    - "hellaswag"
+    - "gsm8k"
 evaluation_args:
     truthfulqa_mc1:
         batch_size: 32
