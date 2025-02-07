@@ -46,12 +46,14 @@ class LayerReplacingModelWrapper(ModelWrapper):
             self,
             model: [transformers.PreTrainedModel | transformers.AutoModel],
             destination_layer_path_source_layer_path_mapping: dict[list | tuple: list | tuple | Any] = None,
+            deepcopy: bool = False
     ) -> None:
         super().__init__()
 
         self.model = model
         self.destination_layer_path_source_layer_path_mapping = destination_layer_path_source_layer_path_mapping
         self.overwritten_layers = {}
+        self.deepcopy = deepcopy
 
         self.info = {
             "original_model_parameters": count_parameters(self.model),
@@ -138,7 +140,6 @@ class LayerReplacingModelWrapper(ModelWrapper):
         """
         Replaces the layers in the model based on the mapping.
         """
-
 
         source_paths = list(OrderedDict.fromkeys(self.get_destination_layer_path_source_layer_path_mapping().values()))
         if len(source_paths) != 0 and not all([isinstance(source_path, type(list(source_paths)[0])) for source_path in source_paths]):
@@ -269,7 +270,7 @@ class LayerReplacingModelWrapper(ModelWrapper):
                 # overwritten_layers, using the very same instance the reset does not work.
                 self.overwritten_layers[destination_path] = module_tree._modules[layer_name]
                 ########################################################################################################
-                module_tree._modules[layer_name] = destination_layer_path_source_layer_mapping[destination_path]
+                module_tree._modules[layer_name] = destination_layer_path_source_layer_mapping[destination_path] if not self.deepcopy else copy.deepcopy(destination_layer_path_source_layer_mapping[destination_path])
             elif len(child._modules) == 0:
                 # If the child has no children, we reached a leaf node and we do nothing
                 pass
@@ -334,11 +335,13 @@ class ProcessedLayerReplacingModelWrapper(LayerReplacingModelWrapper, ABC):
             self,
             model: [transformers.PreTrainedModel | transformers.AutoModel],
             destination_layer_path_source_layer_path_mapping: dict[list | tuple: list | tuple] = None,
+            deepcopy: bool = False
     ) -> None:
         super().__init__(
             model,
             None if destination_layer_path_source_layer_path_mapping is None
-            else {key: key for key in destination_layer_path_source_layer_path_mapping.keys()}
+            else {key: key for key in destination_layer_path_source_layer_path_mapping.keys()},
+            deepcopy
         )
 
     @override
