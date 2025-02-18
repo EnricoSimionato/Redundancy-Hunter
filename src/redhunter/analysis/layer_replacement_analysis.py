@@ -23,6 +23,7 @@ from exporch.utils.causal_language_modeling import load_model_for_causal_lm, loa
 from exporch.experiment import benchmark_id_metric_name_mapping, evaluate_model_on_benchmark
 from exporch.utils.general_framework_utils import get_datamodule
 from exporch.utils.plot_utils.heatmap import plot_heatmap
+from redhunter.analysis.analysis_utils import extract_number, layer_name_matrix_name_mapping
 
 from redhunter.utils.layer_replacement_wrapper.layer_replacement_wrapper import LayerReplacingModelWrapper, \
     NullLayerReplacingModelWrapper
@@ -323,39 +324,89 @@ class LayerReplacementAnalysis(AnalysisExperiment):
         original_model_performance = {benchmark_id: all_benchmark_results.pop(("original", "original")) for benchmark_id, all_benchmark_results in performance_dict.items()}
         self.log(f"Original model performance: {original_model_performance}")
 
+        x_rotation = 0
         # Plotting the results
         duplicated_layers_labels_list, overwritten_layers_labels_list, post_processed_results_list = self._format_result_dictionary_to_plot(performance_dict, original_model_performance)
         for benchmark_id in post_processed_results_list.keys():
+            # Creating overwriting and overwritten layers labels
+            x_labels = None
+            y_labels = None
+            try:
+                for tensor_keys in overwritten_layers_labels_list[benchmark_id]:
+                    key_elements = tensor_keys.split("\n")
+                    plot_labels = []
+                    for key_element in key_elements:
+                        key_element_list_format = [el.replace("'", "").replace('"',"") for el in key_element[1:-1].split(", ")]
+                        layer_idx = extract_number(key_element)
+                        key_element_label = layer_name_matrix_name_mapping[key_element_list_format[-1]][:-2] + rf"\, , {layer_idx}" + "}$"
+                        plot_labels.append(key_element_label)
+                    plot_label = "\n".join(plot_labels)
+
+                    if x_labels is None:
+                        x_labels = [plot_label,]
+                    else:
+                        x_labels.append(plot_label)
+
+                for tensor_keys in duplicated_layers_labels_list[benchmark_id]:
+                    key_elements = tensor_keys.split("\n")
+                    plot_labels = []
+                    for key_element in key_elements:
+                        key_element_list_format = [el.replace("'", "").replace('"',"") for el in key_element[1:-1].split(", ")]
+                        layer_idx = extract_number(key_element)
+                        key_element_label = layer_name_matrix_name_mapping[key_element_list_format[-1]][:-2] + rf"\, , {layer_idx}" + "}$"
+                        plot_labels.append(key_element_label)
+                    plot_label = ", ".join(plot_labels)
+
+                    if y_labels is None:
+                        y_labels = [plot_label, ]
+                    else:
+                        y_labels.append(plot_label)
+            except KeyError as e:
+                print(e)
+                x_labels = overwritten_layers_labels_list[benchmark_id]
+                y_labels = duplicated_layers_labels_list[benchmark_id]
+                x_rotation = 90
+
             self.log(f"Printing the results for task: {benchmark_id}")
             plot_heatmap(
                 [[post_processed_results_list[benchmark_id]]],
                 os.path.join(self.get_experiment_path(), f"heatmap_{benchmark_id}.pdf"),
-                f"Results for the model {config.get('model_id').split('/')[-1]} on the task {benchmark_id}",
-                axis_titles=[f"Metric: {benchmark_id_metric_name_mapping[benchmark_id]}"],
-                x_title="Overwritten layers labels" if visible_x_title else "",
-                y_title="Duplicated layers labels"  if visible_y_title else "",
-                x_labels=[overwritten_layers_labels_list[benchmark_id]],
-                y_labels=[duplicated_layers_labels_list[benchmark_id]],
+                #title=f"Results for the model {config.get('model_id').split('/')[-1]} on the task {benchmark_id}",
+                #axis_titles=[f"Metric: {benchmark_id_metric_name_mapping[benchmark_id]}"],
+                x_title="Labels of the overwritten layers" if visible_x_title else "",
+                y_title="Labels of the duplicated layers"  if visible_y_title else "",
+                x_labels=[x_labels,],
+                y_labels=[y_labels,],
+                x_rotation=x_rotation,
                 fig_size=fig_size,
                 edge_color="white",
-                fontsize=22,
+                fontsize=23,
+                tick_label_size=18,
+                x_title_size=26,
+                y_title_size=26,
                 precision=3
             )
+            """
             plot_heatmap(
                 [[(post_processed_results_list[benchmark_id] >= post_processed_results_list[benchmark_id][0, 0]) *
                   post_processed_results_list[benchmark_id]]],
-                os.path.join(self.get_experiment_path(), f"heatmap_{benchmark_id}_greater_baseline.pdf"),
-                f"Models with better performance than the original one ({config.get('model_id').split('/')[-1]}) on the task {benchmark_id}",
-                axis_titles=["Coloured cells represent models with better performance than the original one"],
-                x_title="Overwritten layers labels",
-                y_title="Duplicated layers labels",
-                x_labels=[overwritten_layers_labels_list[benchmark_id]],
-                y_labels=[duplicated_layers_labels_list[benchmark_id]],
+                os.path.join(self.get_experiment_path(), f"heatmap_{benchmark_id}.pdf"),
+                #title=f"Models with better performance than the original one ({config.get('model_id').split('/')[-1]}) on the task {benchmark_id}",
+                #axis_titles=["Coloured cells represent models with better performance than the original one"],
+                x_title="Labels of the overwritten layers" if visible_x_title else "",
+                y_title="Labels of the duplicated layers"  if visible_y_title else "",
+                x_labels=[x_labels,],
+                y_labels=[y_labels,],
+                x_rotation=0,
                 fig_size=fig_size,
                 edge_color="white",
-                fontsize=22,
+                fontsize=23,
+                tick_label_size=18,
+                x_title_size=26,
+                y_title_size=26,
                 precision=3
             )
+            """
 
     def _format_result_dictionary_to_plot(
             self,
@@ -584,18 +635,97 @@ class SingleNullLayersReplacementAnalysis(LayerReplacementAnalysis):
                 Performance arrays for each benchmark.
         """
 
-        for benchmark_id in performance_arrays.keys():
-            original_model_performance = original_model_performance_dictionary[benchmark_id][benchmark_id][benchmark_id_metric_name_mapping[benchmark_id]]
-            performance_arrays[benchmark_id] = np.concatenate(
-                (np.array([[original_model_performance]]), performance_arrays[benchmark_id]), axis=1
-            )
-            destination_paths[benchmark_id] = ["Original model"] + destination_paths[benchmark_id]
+        #for benchmark_id in performance_arrays.keys():
+        #    original_model_performance = original_model_performance_dictionary[benchmark_id][benchmark_id][benchmark_id_metric_name_mapping[benchmark_id]]
+        #    performance_arrays[benchmark_id] = np.concatenate(
+        #        (np.array([[original_model_performance]]), performance_arrays[benchmark_id]), axis=1
+        #    )
+            #destination_paths[benchmark_id] = ["Original model"] + destination_paths[benchmark_id]
         formatted_source_paths = {benchmark_id: [] for benchmark_id in source_paths.keys()}
         for benchmark_id in source_paths.keys():
             if source_paths[benchmark_id] == ["[]",]:
                 formatted_source_paths[benchmark_id] = ["",]
 
         return formatted_source_paths, destination_paths, performance_arrays
+
+    @override
+    def _plot_results(
+            self,
+            config: Config,
+            data: Any
+    ) -> None:
+        """
+        Plots the results of the analysis.
+
+        Args:
+            config (Config):
+                The configuration object containing the parameters of the experiment.
+            data (Any):
+                The data to be plotted.
+        """
+
+        if data is None:
+            self.log("The data must be provided to plot the results of the analysis.")
+            raise ValueError("The data must be provided to plot the results of the analysis.")
+
+        # Post-processing the results if they have not been post-processed yet
+        self._postprocess_results()
+
+        fig_size = config.get("figure_size") if config.contains("figure_size") else (36, 36)
+        visible_x_title = config.get("visible_x_title") if config.contains("visible_x_title") else True
+        visible_y_title = config.get("visible_y_title") if config.contains("visible_y_title") else True
+        destination_layer_path_source_layer_path_mapping_list, performance_dict = data
+
+        # Extracting the results for the original model
+        original_model_performance = {benchmark_id: all_benchmark_results.pop(("original", "original")) for benchmark_id, all_benchmark_results in performance_dict.items()}
+        self.log(f"Original model performance: {original_model_performance}")
+
+        x_rotation = 0
+        # Plotting the results
+        duplicated_layers_labels_list, overwritten_layers_labels_list, post_processed_results_list = self._format_result_dictionary_to_plot(performance_dict, original_model_performance)
+        for benchmark_id in post_processed_results_list.keys():
+            # Creating overwriting and overwritten layers labels
+            x_labels = None
+            try:
+                for tensor_keys in overwritten_layers_labels_list[benchmark_id]:
+                    key_elements = tensor_keys[2:-2].split("), (")
+                    plot_labels = []
+                    for key_element in key_elements:
+                        key_element_list_format = [el.replace("'", "").replace('"',"") for el in key_element[1:-1].split(", ")]
+                        layer_idx = extract_number(key_element)
+                        key_element_label = layer_name_matrix_name_mapping[key_element_list_format[-1]][:-2] + rf"\, , {layer_idx}" + "}$"
+                        plot_labels.append(key_element_label)
+                    plot_label = "\n".join(plot_labels)
+
+                    if x_labels is None:
+                        x_labels = [plot_label,]
+                    else:
+                        x_labels.append(plot_label)
+            except KeyError as e:
+                print(e)
+                x_labels = overwritten_layers_labels_list[benchmark_id]
+                x_rotation = 90
+
+            self.log(f"Printing the results for task: {benchmark_id}")
+            plot_heatmap(
+                [[post_processed_results_list[benchmark_id]]],
+                os.path.join(self.get_experiment_path(), f"heatmap_{benchmark_id}.pdf"),
+                #title=f"Results for the model {config.get('model_id').split('/')[-1]} on the task {benchmark_id}",
+                #axis_titles=[f"Metric: {benchmark_id_metric_name_mapping[benchmark_id]}"],
+                x_title="Labels of the overwritten layers" if visible_x_title else "",
+                y_title="Labels of the duplicated layers"  if visible_y_title else "",
+                x_labels=[x_labels,],
+                y_labels=[[r"$\mathbf{W}_{\text{zeros}}$",],],
+                x_rotation=x_rotation,
+                fig_size=fig_size,
+                edge_color="white",
+                colorbar_ratio=2.,
+                fontsize=23,
+                tick_label_size=18,
+                x_title_size=26,
+                y_title_size=26,
+                precision=3
+            )
 
 
 class AllLayerCouplesReplacementAnalysis(LayerReplacementAnalysis):
