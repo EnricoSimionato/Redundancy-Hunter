@@ -15,7 +15,8 @@ from exporch import Config
 from exporch.utils.causal_language_modeling import load_model_for_causal_lm
 from exporch.utils.plot_utils import plot_heatmap
 
-from redhunter.analysis.analysis_utils import AnalysisTensorDict, AnalysisTensorWrapper, extract
+from redhunter.analysis.analysis_utils import AnalysisTensorDict, AnalysisTensorWrapper, extract, \
+    layer_name_matrix_name_mapping, extract_number
 from redhunter.analysis_experiment import AnalysisExperiment
 
 
@@ -303,7 +304,7 @@ class RankAnalysis(AnalysisExperiment, ABC):
 
             # Creating the plot
             fig, ax = plt.subplots(1, 2, figsize=(fig_size[1], fig_size[1] / 2))
-            fig.suptitle(key_arguments[label]["title"], fontsize=16)
+            #fig.suptitle(key_arguments[label]["title"], fontsize=16)
 
             for idx, (tensor_key, color) in enumerate(zip(results[label].keys(), line_colors)):
                 singular_values = results[label][tensor_key]["singular_values"]
@@ -312,8 +313,13 @@ class RankAnalysis(AnalysisExperiment, ABC):
                 plot_color = self.config.get("first_color", color) if idx == 0 else color
                 plot_color = self.config.get("last_color", plot_color) if idx == len(results[label].keys()) - 1 else plot_color
 
-                ax[0].plot(singular_values, label=tensor_key, color=plot_color)
-                ax[1].plot(explained_variance, label=tensor_key, color=plot_color)
+                key_elements = tensor_key.split(" ")
+                layer_idx = extract_number(tensor_key)
+                plot_label = layer_name_matrix_name_mapping[key_elements[-1]]
+
+                plot_label = plot_label[:-2] + rf"\, , {layer_idx}" + "}$"
+                ax[0].plot(singular_values, label=plot_label, color=plot_color)
+                ax[1].plot(explained_variance, label=plot_label, color=plot_color)
 
                 position = int(len(singular_values) * (idx + 1) / (num_tensors + 1))
 
@@ -338,17 +344,17 @@ class RankAnalysis(AnalysisExperiment, ABC):
                 )
 
             # Setting the singular values plot properties
-            ax[0].set_title(key_arguments[label]["sv_title"])
-            ax[0].set_xlabel("Singular value index")
-            ax[0].set_ylabel("Singular value")
-            ax[0].legend()
+            #ax[0].set_title(key_arguments[label]["sv_title"])
+            ax[0].set_xlabel("Singular value index", fontsize=14)
+            ax[0].set_ylabel("Singular value", fontsize=14)
+            ax[0].legend(fontsize=12)
             ax[0].grid(True)
 
             # Setting the explained variance plot properties
-            ax[1].set_title(key_arguments[label]["ev_title"])
-            ax[1].set_xlabel("Number of singular values considered")
-            ax[1].set_ylabel("Fraction of explained variance")
-            ax[1].legend()
+            #ax[1].set_title(key_arguments[label]["ev_title"])
+            ax[1].set_xlabel("Number of singular values considered", fontsize=14)
+            ax[1].set_ylabel("Fraction of explained variance", fontsize=14)
+            ax[1].legend(fontsize=12)
             ax[1].grid(True)
 
             plt.tight_layout()
@@ -385,51 +391,57 @@ class RankAnalysis(AnalysisExperiment, ABC):
         explained_variance_threshold = config.get("explained_variance_threshold") if config.contains("explained_variance_threshold") else 1.
         singular_values_threshold = config.get("singular_values_threshold") if config.contains("singular_values_threshold") else 0.
         relative_rank = config.get("relative_rank") if config.contains("relative_rank") else False
-        fig_size = config.get("figure_size") if config.contains("figure_size") else (10, 10)
+
+        fig_size_ranks = config.get("fig_size_ranks") if config.contains("fig_size_ranks") else (10, 8)
+
         heatmap_name = config.get("model_id").split("/")[-1]
         heatmap_name += "_" + config.get("heatmap_name") if config.contains("heatmap_name") else "_heatmap"
         heatmap_name += "_expvar_" + str(explained_variance_threshold).replace('.', '_') + "_sv_" + str(singular_values_threshold).replace('.', '_')
+
         key_arguments = {
-            "title": "Rank analysis of the matrices of the model" + f" (explained variance threshold: {explained_variance_threshold})",
+            #"title": "Rank analysis of the matrices of the model" + f" (explained variance threshold: {explained_variance_threshold})",
+            "title": None,
             "axes_displacement" : "column",
-            "axis_titles" : [f"Rank values for matrices with label {label}" for label in layer_types],
-            "x_title" : "Block indexes",
+            #"axis_titles" : [f"Rank values for matrices with label {label}" for label in layer_types],
+            "axis_titles": None,
+            "x_title" : "Block index",
             "y_title" : "Layer type",
-            "x_labels" : [[str(i) for i in range(number_of_blocks)] for _ in layer_types],
-            "y_labels" : [[label] for label in layer_types],
-            "fig_size" : (fig_size[1], fig_size[1] / 4 * len(layer_types)),
+            "x_labels" : [[str(i) for i in range(number_of_blocks)],],
+            "y_labels" : [[layer_name_matrix_name_mapping[label[-1]] for label in layer_types],],
+            "x_rotation": 0,
+            "fig_size" : fig_size_ranks,
             "precision" : 2,
             "fontsize" : 10
         }
         key_arguments.update(kwargs)
 
-        tensor_ranks_list = []
+        rank_matrix = np.zeros((len(layer_types), number_of_blocks))
+        relative_rank_matrix = np.zeros((len(layer_types), number_of_blocks))
+
         tensor_shapes_list = []
         for index_label, label in enumerate(layer_types):
-            ranks = np.zeros((1, number_of_blocks))
-            relative_ranks = np.zeros((1, number_of_blocks))
-
             tensor_shapes_list.append([])
             for index_block, tensor_key in enumerate(results[label].keys()):
                 rank = results[label][tensor_key]["rank"]
                 shape = results[label][tensor_key]["shape"]
                 tensor_shapes_list[-1].append(shape)
-                ranks[0, index_block] = rank
+                rank_matrix[index_label, index_block] = rank
+                if config.contains("rank_related_to_parameters") and config.get("rank_related_to_parameters"):
+                    relative_rank_matrix[index_label, index_block] = rank / (torch.sqrt(torch.tensor(shape[0]) * torch.tensor(shape[1]))).item()
+                else:
+                    relative_rank_matrix[index_label, index_block] = rank / min(shape[0], shape[1])
 
-                if config.contains("relative_rank") and config.get("relative_rank"):
-                    relative_rank = round(rank / (torch.sqrt(torch.tensor(shape[0]) * torch.tensor(shape[1]))).item(), 2)
-                    relative_ranks[0, index_block] = relative_rank
-
-            if relative_rank:
-                tensor_ranks_list.append([ranks, relative_ranks])
-            else:
-                tensor_ranks_list.append([ranks])
+        if relative_rank:
+            all_ranks_to_plot = [rank_matrix, relative_rank_matrix]
+        else:
+            all_ranks_to_plot = [rank_matrix,]
 
         plot_heatmap(
-            tensor_ranks_list,
+            [all_ranks_to_plot,],
             save_path=str(os.path.join(config.get("experiment_root_path"), f"{heatmap_name}.pdf")),
+            index_colormesh=1 if relative_rank else 0,
             **key_arguments,
-            vmin=[0 for _ in layer_types], vmax=[min(min(tuple(shape)) for shape in shape_list) for shape_list in tensor_shapes_list])
+            vmin=[0,], vmax=[1,])
 
     def get_kwargs_plot_rank_analysis(
             self,
@@ -537,6 +549,76 @@ class ConcatenatedLayersRankAnalysis(TypeSortedRankAnalysis):
             preprocessed_tensors.append_tensor(label_column_wise, [AnalysisTensorWrapper(concatenated_tensors_column_wise, path=path, name=label[0], label=f"concatenated {label[0]}", block_index=0)])
 
         return preprocessed_tensors
+
+    def _plot_singular_values_distribution(
+            self,
+            config: Config,
+            data: Any,
+            kwargs: dict
+    ) -> None:
+        """
+        Plots the singular values distribution.
+
+        Args:
+            config (Config):
+                The configuration of the experiment.
+            data (Any):
+                The data obtained from the analysis.
+            kwargs (dict):
+                Additional keyword arguments.
+                Structure:
+                    >> { label: { key: value, ... }, ... }
+        """
+
+        self.log("Plotting singular values and fraction of explained variance.")
+        results = data[0]
+        fig_size = config.get("figure_size") if config.contains("figure_size") else (10, 10)
+        key_arguments = {label: {
+            "title": f"Singular values and fraction of explained variance of the tensors with label '{" ".join(label)}' of the model '{config.get("model_id")}'",
+            "sv_title": f"Singular values of the tensors with label '{" ".join(label)}'",
+            "ev_title": f"Fraction of explained variance of the tensors with label '{" ".join(label)}'"
+        } for label in results.keys()}
+        key_arguments.update(kwargs)
+
+        for label in results.keys():
+            # Defining the colormap
+            colormap = get_cmap("viridis")
+            num_tensors = len(results[label].keys())
+            line_colors = colormap(np.linspace(0, 1, num_tensors))
+
+            # Creating the plot
+            fig, ax = plt.subplots(1, 2, figsize=(fig_size[1], fig_size[1] / 2))
+            #fig.suptitle(key_arguments[label]["title"], fontsize=16)
+
+            for idx, (tensor_key, color) in enumerate(zip(results[label].keys(), line_colors)):
+                singular_values = results[label][tensor_key]["singular_values"]
+                explained_variance = results[label][tensor_key]["explained_variance"]
+
+                plot_color = self.config.get("first_color", color) if idx == 0 else color
+                plot_color = self.config.get("last_color", plot_color) if idx == len(results[label].keys()) - 1 else plot_color
+
+                ax[0].plot(singular_values, label=layer_name_matrix_name_mapping[tensor_key.split(" ")[-1]], color=plot_color)
+                ax[1].plot(explained_variance, label=layer_name_matrix_name_mapping[tensor_key.split(" ")[-1]], color=plot_color)
+
+            # Setting the singular values plot properties
+            #ax[0].set_title(key_arguments[label]["sv_title"])
+            ax[0].set_xlabel("Singular value index")
+            ax[0].set_ylabel("Singular value")
+            ax[0].legend()
+            ax[0].grid(True)
+
+            # Setting the explained variance plot properties
+            #ax[1].set_title(key_arguments[label]["ev_title"])
+            ax[1].set_xlabel("Number of considered singular values")
+            ax[1].set_ylabel("Fraction of explained variance")
+            ax[1].legend()
+            ax[1].grid(True)
+
+            plt.tight_layout()
+            # Saving the plot
+            storage_path = str(os.path.join(self.get_experiment_path(), f"{config.get("model_id").split("/")[-1]}_singular_values_distribution_{"_".join(label)}.pdf"))
+            plt.savefig(storage_path, format="pdf")
+
 
 
 class DeltaLayersRankAnalysis(TypeSortedRankAnalysis, ABC):
@@ -668,6 +750,7 @@ class DeltaConsecutiveLayersRankAnalysis(DeltaLayersRankAnalysis):
         } for label in results.keys()})
 
         return kwargs
+
 
 class DeltaLayersWRTAverageLayerRankAnalysis(DeltaLayersRankAnalysis):
     """

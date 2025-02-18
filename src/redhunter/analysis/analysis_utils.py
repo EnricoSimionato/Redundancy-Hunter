@@ -1,4 +1,5 @@
 from __future__ import annotations
+import re
 
 import copy
 from typing import Any
@@ -14,6 +15,49 @@ from exporch import Verbose
 from redhunter.utils.list_utils.list_utils import is_subsequence
 
 from exporch.utils import LoggingInterface
+
+layer_name_matrix_name_mapping = {
+    "q_proj": r"$\mathbf{W}_{\text{Q}}$",
+    "k_proj": r"$\mathbf{W}_{\text{K}}$",
+    "v_proj": r"$\mathbf{W}_{\text{V}}$",
+    "o_proj": r"$\mathbf{W}_{\text{O}}$",
+
+    "gate_proj": r"$\mathbf{W}_{\text{gate}}$",
+    "up_proj": r"$\mathbf{W}_{\text{up}}$",
+    "down_proj": r"$\mathbf{W}_{\text{down}}$"
+}
+
+layer_name_fancy_layer_name_mapping = {
+    "q_proj": r"$\mathbf{}_{\text{Q}}$",
+    "k_proj": r"$\mathbf{}_{\text{K}}$",
+    "v_proj": r"$\mathbf{}_{\text{V}}$",
+    "o_proj": r"$\mathbf{}_{\text{O}}$",
+
+    "gate_proj": r"$\mathbf{}_{\text{gate}}$",
+    "up_proj": r"$\mathbf{}_{\text{up}}$",
+    "down_proj": r"$\mathbf{}_{\text{down}}$"
+}
+
+
+def extract_number(
+        filename: str
+) -> int:
+    """
+    Extracts the first number found in the filename.
+
+    Args:
+        filename (str):
+            The name of the file.
+
+    Returns:
+        int:
+            The extracted number.
+    """
+    match = re.search(r'\d+', filename)
+    if match:
+        return int(match.group())
+    return 0
+
 
 class RankAnalysisResult:
     """
