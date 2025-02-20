@@ -23,7 +23,8 @@ from exporch.utils.causal_language_modeling import load_model_for_causal_lm, loa
 from exporch.experiment import benchmark_id_metric_name_mapping, evaluate_model_on_benchmark
 from exporch.utils.general_framework_utils import get_datamodule
 from exporch.utils.plot_utils.heatmap import plot_heatmap
-from redhunter.analysis.analysis_utils import extract_number, layer_name_matrix_name_mapping
+from redhunter.analysis.analysis_utils import extract_number, layer_name_matrix_name_mapping, \
+    layer_name_fancy_layer_name_mapping
 
 from redhunter.utils.layer_replacement_wrapper.layer_replacement_wrapper import LayerReplacingModelWrapper, \
     NullLayerReplacingModelWrapper
@@ -338,7 +339,7 @@ class LayerReplacementAnalysis(AnalysisExperiment):
                     for key_element in key_elements:
                         key_element_list_format = [el.replace("'", "").replace('"',"") for el in key_element[1:-1].split(", ")]
                         layer_idx = extract_number(key_element)
-                        key_element_label = layer_name_matrix_name_mapping[key_element_list_format[-1]][:-2] + rf"\, , {layer_idx}" + "}$"
+                        key_element_label = layer_name_fancy_layer_name_mapping[key_element_list_format[-1]][:-2] + rf"\, , {layer_idx}" + "}$"
                         plot_labels.append(key_element_label)
                     plot_label = "\n".join(plot_labels)
 
@@ -353,7 +354,7 @@ class LayerReplacementAnalysis(AnalysisExperiment):
                     for key_element in key_elements:
                         key_element_list_format = [el.replace("'", "").replace('"',"") for el in key_element[1:-1].split(", ")]
                         layer_idx = extract_number(key_element)
-                        key_element_label = layer_name_matrix_name_mapping[key_element_list_format[-1]][:-2] + rf"\, , {layer_idx}" + "}$"
+                        key_element_label = layer_name_fancy_layer_name_mapping[key_element_list_format[-1]][:-2] + rf"\, , {layer_idx}" + "}$"
                         plot_labels.append(key_element_label)
                     plot_label = ", ".join(plot_labels)
 
@@ -693,7 +694,7 @@ class SingleNullLayersReplacementAnalysis(LayerReplacementAnalysis):
                     for key_element in key_elements:
                         key_element_list_format = [el.replace("'", "").replace('"',"") for el in key_element[1:-1].split(", ")]
                         layer_idx = extract_number(key_element)
-                        key_element_label = layer_name_matrix_name_mapping[key_element_list_format[-1]][:-2] + rf"\, , {layer_idx}" + "}$"
+                        key_element_label = layer_name_fancy_layer_name_mapping[key_element_list_format[-1]][:-2] + rf"\, , {layer_idx}" + "}$"
                         plot_labels.append(key_element_label)
                     plot_label = "\n".join(plot_labels)
 
@@ -715,11 +716,10 @@ class SingleNullLayersReplacementAnalysis(LayerReplacementAnalysis):
                 x_title="Labels of the overwritten layers" if visible_x_title else "",
                 y_title="Labels of the duplicated layers"  if visible_y_title else "",
                 x_labels=[x_labels,],
-                y_labels=[[r"$\mathbf{W}_{\text{zeros}}$",],],
+                y_labels=[[r"$\mathbf{f}_{\text{zeros}}$",],],
                 x_rotation=x_rotation,
                 fig_size=fig_size,
                 edge_color="white",
-                colorbar_ratio=2.,
                 fontsize=23,
                 tick_label_size=18,
                 x_title_size=26,

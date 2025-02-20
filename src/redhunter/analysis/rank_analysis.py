@@ -240,6 +240,10 @@ class RankAnalysis(AnalysisExperiment, ABC):
                 The data obtained from the analysis.
         """
 
+        plt.rcParams['mathtext.fontset'] = 'custom'
+        plt.rcParams['mathtext.it'] = 'STIXGeneral:italic'
+        plt.rcParams['mathtext.bf'] = 'STIXGeneral:bold'
+
         kwargs_plot_singular_values_distribution = self.get_kwargs_plot_singular_values_distribution(config, data)
         self._plot_singular_values_distribution(config, data, kwargs_plot_singular_values_distribution)
         kwargs_plot_rank_analysis = self.get_kwargs_plot_rank_analysis(config, data)
@@ -353,7 +357,7 @@ class RankAnalysis(AnalysisExperiment, ABC):
             # Setting the explained variance plot properties
             #ax[1].set_title(key_arguments[label]["ev_title"])
             ax[1].set_xlabel("Number of singular values considered", fontsize=14)
-            ax[1].set_ylabel("Fraction of explained variance", fontsize=14)
+            ax[1].set_ylabel("Explained variance", fontsize=14)
             ax[1].legend(fontsize=12)
             ax[1].grid(True)
 
@@ -441,7 +445,10 @@ class RankAnalysis(AnalysisExperiment, ABC):
             save_path=str(os.path.join(config.get("experiment_root_path"), f"{heatmap_name}.pdf")),
             index_colormesh=1 if relative_rank else 0,
             **key_arguments,
-            vmin=[0,], vmax=[1,])
+            vmin=[0,],
+            vmax=[1,],
+            use_custom_font=False
+        )
 
     def get_kwargs_plot_rank_analysis(
             self,
@@ -610,7 +617,7 @@ class ConcatenatedLayersRankAnalysis(TypeSortedRankAnalysis):
             # Setting the explained variance plot properties
             #ax[1].set_title(key_arguments[label]["ev_title"])
             ax[1].set_xlabel("Number of considered singular values")
-            ax[1].set_ylabel("Fraction of explained variance")
+            ax[1].set_ylabel("Explained variance")
             ax[1].legend()
             ax[1].grid(True)
 
@@ -619,7 +626,92 @@ class ConcatenatedLayersRankAnalysis(TypeSortedRankAnalysis):
             storage_path = str(os.path.join(self.get_experiment_path(), f"{config.get("model_id").split("/")[-1]}_singular_values_distribution_{"_".join(label)}.pdf"))
             plt.savefig(storage_path, format="pdf")
 
+    def _plot_rank_analysis(
+            self,
+            config: Config,
+            data: Any,
+            kwargs: dict
+    ) -> None:
+        """
+        Plots a heatmap containing the approximated ranks of the model layers.
 
+        Args:
+            config (Config):
+                The configuration of the experiment.
+            data (Any):
+                The data obtained from the analysis.
+            kwargs (dict):
+                Additional keyword arguments.
+                Structure:
+                    >> { label: { key: value, ... }, ... }
+        """
+
+        self.log("Plotting the rank analysis.")
+
+        results = data[0]
+
+        explained_variance_threshold = config.get("explained_variance_threshold") if config.contains("explained_variance_threshold") else 1.
+        singular_values_threshold = config.get("singular_values_threshold") if config.contains("singular_values_threshold") else 0.
+        relative_rank = config.get("relative_rank") if config.contains("relative_rank") else False
+
+        fig_size_ranks = config.get("fig_size_ranks") if config.contains("fig_size_ranks") else (10, 1)
+
+        heatmap_name = config.get("model_id").split("/")[-1]
+        heatmap_name += "_" + config.get("heatmap_name") if config.contains("heatmap_name") else "_heatmap"
+        heatmap_name += "_expvar_" + str(explained_variance_threshold).replace('.', '_') + "_sv_" + str(singular_values_threshold).replace('.', '_')
+
+        results_row_concat = {key: item for key, item in results.items() if "row-wise concatenation" in key}
+        results_column_concat = {key: item for key, item in results.items() if "column-wise concatenation" in key}
+        split_results_list = {"row_wise_concatenation": results_row_concat,  "column_wise_concatenation": results_column_concat}
+
+        for key, split_results in split_results_list.items():
+            layer_types = list(split_results.keys())
+
+            key_arguments = {
+                # "title": "Rank analysis of the matrices of the model" + f" (explained variance threshold: {explained_variance_threshold})",
+                "title": None,
+                "axes_displacement": "column",
+                # "axis_titles" : [f"Rank values for matrices with label {label}" for label in layer_types],
+                "axis_titles": None,
+                "x_title": "Layer type",
+                "y_title": None,
+                "x_labels": [[layer_name_matrix_name_mapping[label[-1]] for label in layer_types], ],
+                "y_labels": ["",],
+                "x_rotation": 0,
+                "fig_size": fig_size_ranks,
+                "precision": 2,
+                "fontsize": 10
+            }
+            key_arguments.update(kwargs)
+
+            rank_matrix = np.zeros((1, len(layer_types)))
+            relative_rank_matrix = np.zeros((1, len(layer_types)))
+
+            for index_label, label in enumerate(layer_types):
+                res = split_results[label][list(split_results[label].keys())[0]]
+                rank = res["rank"]
+                shape = res["shape"]
+                rank_matrix[0, index_label] = rank
+                if config.contains("rank_related_to_parameters") and config.get("rank_related_to_parameters"):
+                    relative_rank_matrix[0, index_label] = rank / (
+                        torch.sqrt(torch.tensor(shape[0]) * torch.tensor(shape[1]))).item()
+                else:
+                    relative_rank_matrix[0, index_label] = rank / min(shape[0], shape[1])
+
+            if relative_rank:
+                all_ranks_to_plot = [rank_matrix, relative_rank_matrix]
+            else:
+                all_ranks_to_plot = [rank_matrix,]
+
+            plot_heatmap(
+                [all_ranks_to_plot,],
+                save_path=str(os.path.join(config.get("experiment_root_path"), f"{heatmap_name}_{key}.pdf")),
+                index_colormesh=1 if relative_rank else 0,
+                **key_arguments,
+                vmin=[0,],
+                vmax=[1,],
+                use_custom_font=False
+            )
 
 class DeltaLayersRankAnalysis(TypeSortedRankAnalysis, ABC):
     """

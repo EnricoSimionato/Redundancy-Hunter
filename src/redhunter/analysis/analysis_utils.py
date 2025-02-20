@@ -28,14 +28,14 @@ layer_name_matrix_name_mapping = {
 }
 
 layer_name_fancy_layer_name_mapping = {
-    "q_proj": r"$\mathbf{}_{\text{Q}}$",
-    "k_proj": r"$\mathbf{}_{\text{K}}$",
-    "v_proj": r"$\mathbf{}_{\text{V}}$",
-    "o_proj": r"$\mathbf{}_{\text{O}}$",
+    "q_proj": r"$\mathbf{f}_{\text{Q}}$",
+    "k_proj": r"$\mathbf{f}_{\text{K}}$",
+    "v_proj": r"$\mathbf{f}_{\text{V}}$",
+    "o_proj": r"$\mathbf{f}_{\text{O}}$",
 
-    "gate_proj": r"$\mathbf{}_{\text{gate}}$",
-    "up_proj": r"$\mathbf{}_{\text{up}}$",
-    "down_proj": r"$\mathbf{}_{\text{down}}$"
+    "gate_proj": r"$\mathbf{f}_{\text{gate}}$",
+    "up_proj": r"$\mathbf{f}_{\text{up}}$",
+    "down_proj": r"$\mathbf{f}_{\text{down}}$"
 }
 
 
