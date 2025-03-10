@@ -24,6 +24,10 @@ from redhunter.analysis.analysis_utils import AnalysisTensorDict, AnalysisTensor
 from redhunter.utils.layer_replacement_wrapper.layer_replacement_wrapper import LayerReplacingModelWrapper
 from redhunter.analysis_experiment import AnalysisExperiment
 
+
+# TODO fix it, I don't know what point it is
+
+
 def compute_cosine(
         x: torch.Tensor,
         y: torch.Tensor,
@@ -929,7 +933,7 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
         if statistics_original_layers is None:
             plot_heatmap(
                 statistics_delta_layers,
-                save_path=os.path.join(config.get("directory_path"), "heatmap.png"),
+                save_path=os.path.join(config.get("directory_path"), "heatmap.pdf"),
                 title=self.title + f"(Model: {config.get("model_id")})", axis_titles=self.axis_titles,
                 x_title=self.x_title, y_title=self.y_title,
                 x_labels=column_labels, y_labels=row_labels,
@@ -939,7 +943,7 @@ class SortedLayersCompressionAnalysis(AnalysisExperiment):
             plot_heatmap_with_additional_row_column(
                 statistics_delta_layers,
                 values_rows_lists=statistics_original_layers, values_columns_lists=statistics_original_layers,
-                save_path=os.path.join(config.get("directory_path"), "heatmap.png"),
+                save_path=os.path.join(config.get("directory_path"), "heatmap.pdf"),
                 title=self.title + f"(Model: {config.get("model_id")})", axis_titles=self.axis_titles,
                 x_title=self.x_title, y_title=self.y_title,
                 x_labels=column_labels, y_labels=row_labels,

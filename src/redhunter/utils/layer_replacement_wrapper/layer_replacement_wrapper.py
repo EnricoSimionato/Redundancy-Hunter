@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import gc
+
 import copy
 from abc import abstractmethod, ABC
 from typing import Any, override
@@ -46,14 +48,17 @@ class LayerReplacingModelWrapper(ModelWrapper):
             self,
             model: [transformers.PreTrainedModel | transformers.AutoModel],
             destination_layer_path_source_layer_path_mapping: dict[list | tuple: list | tuple | Any] = None,
-            deepcopy: bool = False
+            deepcopy: bool = False,
+            store_replaced_layers: bool = False
     ) -> None:
         super().__init__()
 
         self.model = model
+
         self.destination_layer_path_source_layer_path_mapping = destination_layer_path_source_layer_path_mapping
         self.overwritten_layers = {}
         self.deepcopy = deepcopy
+        self.store_replaced_layers = store_replaced_layers
 
         self.info = {
             "original_model_parameters": count_parameters(self.model),
@@ -268,7 +273,8 @@ class LayerReplacingModelWrapper(ModelWrapper):
                 # Storing the overwritten layer in order be able to reset the switch.
                 # For future changes: the very same method is used to reset the switch, passing a COPY of the dictionary
                 # overwritten_layers, using the very same instance the reset does not work.
-                self.overwritten_layers[destination_path] = module_tree._modules[layer_name]
+                if self.store_replaced_layers:
+                    self.overwritten_layers[destination_path] = module_tree._modules[layer_name]
                 ########################################################################################################
                 module_tree._modules[layer_name] = destination_layer_path_source_layer_mapping[destination_path] if not self.deepcopy else copy.deepcopy(destination_layer_path_source_layer_mapping[destination_path])
             elif len(child._modules) == 0:

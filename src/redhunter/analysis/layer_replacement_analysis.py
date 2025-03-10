@@ -385,7 +385,8 @@ class LayerReplacementAnalysis(AnalysisExperiment):
                 tick_label_size=18,
                 x_title_size=26,
                 y_title_size=26,
-                precision=3
+                precision=3,
+                colorbar_title=r"$\text{accuracy}_{\,\text{replacement}}$"
             )
             """
             plot_heatmap(
@@ -724,7 +725,9 @@ class SingleNullLayersReplacementAnalysis(LayerReplacementAnalysis):
                 tick_label_size=18,
                 x_title_size=26,
                 y_title_size=26,
-                precision=3
+                precision=3,
+                colorbar_title=r"$\text{accuracy}_{\,\text{ablation}}$",
+                colorbar_high_as_heatmap=False
             )
 
 

@@ -541,10 +541,13 @@ class ConcatenatedLayersRankAnalysis(TypeSortedRankAnalysis):
         preprocessed_tensors = AnalysisTensorDict()
         for label in extracted_tensors.get_keys():
             extracted_tensors_label = extracted_tensors.get_tensor_list(label)
+            for extracted_tensor in extracted_tensors_label:
+                a = extracted_tensor.get_tensor()
+
             concatenated_tensors_row_wise = torch.cat(
-                [extracted_tensor.get_tensor() for extracted_tensor in extracted_tensors_label], dim=1)
-            concatenated_tensors_column_wise = torch.cat(
                 [extracted_tensor.get_tensor() for extracted_tensor in extracted_tensors_label], dim=0)
+            concatenated_tensors_column_wise = torch.cat(
+                [extracted_tensor.get_tensor() for extracted_tensor in extracted_tensors_label], dim=1)
             paths = [["block index" if item.isdigit() else item for item in extracted_tensor.get_path()] for extracted_tensor in extracted_tensors_label]
             paths = [list(x) for x in set(tuple(sublist) for sublist in paths)]
             path = sum(([item] if i == 0 else ["&", item] for i, sublist in enumerate(paths) for item in sublist), [])
