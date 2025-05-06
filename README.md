@@ -68,7 +68,7 @@ Redundancy-Hunter/
   ```bash
   python src/redhunter/analysis_experiment.py
   ```
-To customize the experiment, edit the YAML/JSON files under experiments/configurations/.
+To customize the experiment, edit the YAML files under experiments/configurations/.
 
 3. Optionally, you can use Docker and run using:
 
