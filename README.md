@@ -10,7 +10,7 @@ The Redundancy-Hunter repository contains the code to perform redundancy analysi
 -	Docker Support: Containerized environment for consistent and reproducible experiments.
  
 ## Directory Structure
-
+```
 Redundancy-Hunter/
 ├── Dockerfile                  # Docker setup for containerized environment
 ├── README.md                   # Project documentation
@@ -43,6 +43,7 @@ Redundancy-Hunter/
 │   ├── results/                # Output results
 ├── test/
 │   ├── analysis/               # Unit tests (if any)
+```
 
 ## Installation
 1.	Clone the repository
