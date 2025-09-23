@@ -13,7 +13,7 @@ from redhunter.analysis.layer_replacement_analysis import LayerReplacementAnalys
 def main():
     #model_id = "Llama-3.1-8B"
     model_id = "gemma-2-2b"
-    model_path = f"/Users/enricosimionato/Desktop/Redundancy-Hunter/src/experiments/results/{model_id}"
+    model_path = "your_path"
     version_replacement = "5"
     version_null = "5"
     with open(os.path.join(model_path, "all_layer_couples_displacement_based_replacement_redundancy_analysis",
@@ -115,7 +115,7 @@ def main():
 def main():
     model_id = "Llama-3.1-8B"
     #model_id = "gemma-2-2b"
-    model_path = f"/Users/enricosimionato/Desktop/Redundancy-Hunter/src/experiments/results/{model_id}"
+    model_path = "your_path"
     version_replacement_1 = "0"
     version_replacement_2 = "4"
     with open(os.path.join(model_path, "all_layer_couples_displacement_based_replacement_redundancy_analysis",
@@ -217,7 +217,7 @@ def main():
     # Difference between differences
     model_id = "Llama-3.1-8B"
     #model_id = "gemma-2-2b"
-    model_path = f"/Users/enricosimionato/Desktop/Redundancy-Hunter/src/experiments/results/{model_id}"
+    model_path = "your_path"
     version_replacement_1 = "0"
     version_null_1 = "0"
     version_replacement_2 = "4"
@@ -359,7 +359,7 @@ def main():
     # Average performance of 2 replacement experiments
     #model_id = "Llama-3.1-8B"
     model_id = "gemma-2-2b"
-    model_path = f"/Users/enricosimionato/Desktop/Redundancy-Hunter/src/experiments/results/{model_id}"
+    model_path = "your_path"
     version_replacement_1 = "0"
     version_replacement_2 = "4"
     with open(os.path.join(model_path, "all_layer_couples_displacement_based_replacement_redundancy_analysis",
@@ -403,7 +403,7 @@ def main():
     # Average performance of 2 replacement experiments
     #model_id = "Llama-3.1-8B"
     model_id = "gemma-2-2b"
-    model_path = f"/Users/enricosimionato/Desktop/Redundancy-Hunter/src/experiments/results/{model_id}"
+    model_path = "your_path"
     version_replacement_1 = "0"
     version_replacement_2 = "4"
     with open(os.path.join(model_path, "all_layer_couples_displacement_based_replacement_redundancy_analysis",
@@ -447,7 +447,7 @@ def main():
     # Average performance of 2 ablation experiments
     model_id = "Llama-3.1-8B"
     #model_id = "gemma-2-2b"
-    model_path = f"/Users/enricosimionato/Desktop/Redundancy-Hunter/src/experiments/results/{model_id}"
+    model_path = "your_path"
     version_ablation_1 = "0"
     version_ablation_2 = "4"
 
@@ -490,7 +490,7 @@ def main():
     #model_id = "Llama-3.1-8B"
     model_id = "gemma-2-2b"
     store = False
-    model_path = f"/Users/enricosimionato/Desktop/Redundancy-Hunter/src/experiments/results/{model_id}"
+    model_path = "your_path"
     version = "1"
     with open(os.path.join(model_path, "all_layer_couples_displacement_based_replacement_redundancy_analysis",
                            f"version_{version}", "storage.pkl"), "rb") as f:
