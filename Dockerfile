@@ -9,6 +9,6 @@ COPY . .
 # Installing dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 # Logging in to the Hugging Face model hub
-RUN huggingface-cli login --token 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
+RUN huggingface-cli login --token your_token
 # Setting the command to run the script
 CMD ["python3", "src/redhunter/analysis_launcher.py", "CONFIG_SERVER.yaml"]
