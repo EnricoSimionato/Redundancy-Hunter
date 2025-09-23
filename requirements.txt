@@ -5,4 +5,4 @@ transformers
 sentencepiece
 protobuf
 
-git+https://EnricoSimionato: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@github.com/EnricoSimionato/Experiment-Orchestrator.git@master#egg=exporch
+git+https://github.com/EnricoSimionato/Experiment-Orchestrator.git@master#egg=exporch
