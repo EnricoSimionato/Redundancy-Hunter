@@ -87,3 +87,7 @@ To customize the experiment, edit the YAML files under experiments/configuration
 ## References 
 
 
+
+## License
+
+Released under the [Apache License 2.0](LICENSE).
